@@ -1,13 +1,14 @@
 {
     "compilerOptions": {
       "target": "ES2020",
-      "module": "ESNext",
-      "moduleResolution": "node",
-      "outDir": "./dist",
+      "module": "CommonJS",
       "rootDir": "./src",
-      "strict": true,
+      "outDir": "./dist",
       "esModuleInterop": true,
+      "strict": true,
+      "moduleResolution": "node",
       "resolveJsonModule": true
     },
-    "include": ["src/**/*"]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules"]
 }

@@ -11,6 +11,14 @@ const client = new Client({
     ] 
 });
 
+client.on('error', error => {
+    console.error('クライアントエラー:', error);
+});
+
+process.on('unhandledRejection', error => {
+    console.error('未処理のエラー:', error);
+});
+
 const discordAdapter = new DiscordAdapter(client);
 const messageUseCase = new MessageUseCase();
 

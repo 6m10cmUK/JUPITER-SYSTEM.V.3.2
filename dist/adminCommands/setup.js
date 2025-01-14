@@ -1,33 +1,63 @@
-import { REST, Routes } from 'discord.js';
-import config from '../config.json' assert { type: "json" };
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'url';
-export const execute = async (message, guildId) => {
-    message.reply(guildId);
-    const commands = [];
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const commandsPath = path.join(__dirname, '..', 'commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    for (const file of commandFiles) {
-        const filePath = `file://${path.join(commandsPath, file)}`;
-        const { data } = await import(filePath);
-        console.log(filePath);
-        if (data) {
-            commands.push(data.toJSON());
-        }
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
     }
-    console.log(commands);
-    return;
-    const rest = new REST().setToken(config.token);
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.execute = execute;
+const discord_js_1 = require("discord.js");
+const config_json_1 = __importDefault(require("../config.json"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+async function execute(message, guildId) {
+    const commands = [];
+    const commandsPath = path.join(process.cwd(), 'src/commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
+    const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
+    for (const file of filteredCommandFiles) {
+        const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
+        commands.push(command.data.toJSON());
+    }
+    const rest = new discord_js_1.REST().setToken(config_json_1.default.token);
     try {
         console.log(`${commands.length}個のコマンドを登録するよ`);
-        const data = await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), { body: commands });
-        message.reply(`${data.length}個のコマンドを登録したよ！`);
+        const data = await rest.put(discord_js_1.Routes.applicationGuildCommands(config_json_1.default.applicationId, guildId), { body: commands });
+        await message.reply(`${commands.length}個のコマンドを登録したよ！`);
     }
     catch (error) {
-        console.error(error);
-        message.reply('コマンドの登録中にエラーが発生しちゃった...');
+        console.error('エラー:', error);
+        await message.reply('コマンドの登録中にエラーが発生しちゃった...');
     }
-};
+}

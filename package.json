@@ -10,7 +10,6 @@
     "start": "node dist/index.js",
     "all": "npm run build && npm run start"
   },
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",

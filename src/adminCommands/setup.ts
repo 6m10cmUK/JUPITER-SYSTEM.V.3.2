@@ -1,31 +1,18 @@
-import { Message, REST, Routes, RESTPostAPIApplicationCommandsJSONBody } from 'discord.js';
-import config from '../config.json' assert { type: "json" };
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'url';
+import { Message, REST, Routes } from 'discord.js';
+import config from '../config.json';
+import * as fs from 'fs';
+import * as path from 'path';
 
-export const execute = async (message: Message, guildId: string) => {
-    message.reply(guildId);
+export async function execute(message: Message, guildId: string) {
+    const commands = [];
+    const commandsPath = path.join(process.cwd(), 'src/commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
+    const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
 
-    const commands: RESTPostAPIApplicationCommandsJSONBody[] = [];
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-
-    const commandsPath = path.join(__dirname, '..', 'commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-    for (const file of commandFiles) {
-        const filePath = `file://${path.join(commandsPath, file)}`;
-        const { data } = await import(filePath);
-        console.log(filePath);
-        if (data) {
-            commands.push(data.toJSON());
-        }
+    for (const file of filteredCommandFiles) {
+        const { command } = await import(path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js')));
+        commands.push(command.data.toJSON());
     }
-
-    console.log(commands);
-
-    return;
 
     const rest = new REST().setToken(config.token);
 
@@ -34,13 +21,13 @@ export const execute = async (message: Message, guildId: string) => {
 
         const data = await rest.put(
             Routes.applicationGuildCommands(config.applicationId, guildId),
-            { body: commands },
-        ) as RESTPostAPIApplicationCommandsJSONBody[];
+            { body: commands }
+        );
 
-        message.reply(`${data.length}個のコマンドを登録したよ！`);
+        await message.reply(`${commands.length}個のコマンドを登録したよ！`);
     } catch (error) {
-        console.error(error);
-        message.reply('コマンドの登録中にエラーが発生しちゃった...');
+        console.error('エラー:', error);
+        await message.reply('コマンドの登録中にエラーが発生しちゃった...');
     }
-}; 
+}
 

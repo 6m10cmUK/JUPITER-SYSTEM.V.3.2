@@ -15,10 +15,17 @@ export const command: Command = {
                     { name: '6版', value: 'ver6' },
                     { name: '7版', value: 'ver7' }
                 )
+        )
+        .addStringOption((option: SlashCommandStringOption) =>
+            option.setName('name')
+                .setDescription('キャラクターの名前')
+                .setRequired(false)
         ) as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
         const type = interaction.options.getString('type');
+        const name = interaction.options.getString('name') ?? 'キャラクター名';
+
         // 最初に仮のメッセージを送信
         await interaction.deferReply();
         const replyMessage = await interaction.fetchReply();
@@ -32,20 +39,24 @@ export const command: Command = {
                 statsData,
                 messageId,
                 0,
-                ''
+                '',
+                name,
+                '6'
             );
 
             const { embeds, components } = await display;
             await interaction.editReply({ embeds, components });
         } else if (type === 'ver7') {
-            const statsData = rollAllStats(type); // 7版用のロジックを使用
+            const statsData = rollAllStats(type);
 
             const display = createStatusDisplay(
                 interaction,
                 statsData,
                 messageId,
                 0,
-                ''
+                '',
+                name,
+                '7'
             );
 
             const { embeds, components } = await display;

@@ -36,8 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiscordAdapter = void 0;
 const rerollInteraction_1 = require("../../interactions/rerollInteraction");
 const confirmRerollInteraction_1 = require("../../interactions/confirmRerollInteraction");
-const dice_1 = require("../../commons/dice");
-const diceRoll_1 = require("../../commands/diceRoll");
+const diceRoll_1 = require("../../commands/classicCommands/diceRoll");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 class DiscordAdapter {
@@ -55,8 +54,19 @@ class DiscordAdapter {
         const commandsPath = path.join(process.cwd(), 'src/commands');
         const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
         for (const file of commandFiles) {
-            const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
-            this.commands.set(command.data.name, command);
+            try {
+                const filePath = path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'));
+                const { command } = await Promise.resolve(`${filePath}`).then(s => __importStar(require(s)));
+                if (command?.data?.name) {
+                    this.commands.set(command.data.name, command);
+                }
+                else {
+                    console.warn(`${file}のコマンド定義が不正だよ`);
+                }
+            }
+            catch (error) {
+                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+            }
         }
     }
     setupInteractionHandler() {
@@ -92,10 +102,6 @@ class DiscordAdapter {
     }
     async handleMessage(message, useCase) {
         await (0, diceRoll_1.diceRoll)(message);
-        if (message.content === 'ccb') {
-            const roll = (0, dice_1.rollDice)(3, 6);
-            await message.reply(`ダイスを振りました: ${roll}`);
-        }
         if (!message.content.startsWith(this.prefix))
             return;
         const commandBody = message.content.slice(this.prefix.length).trim();

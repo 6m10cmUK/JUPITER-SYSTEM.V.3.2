@@ -4,16 +4,16 @@ exports.createStatusDisplay = createStatusDisplay;
 exports.updateStatusDisplay = updateStatusDisplay;
 const discord_js_1 = require("discord.js");
 const statusData_1 = require("../types/statusData");
-async function createStatusDisplay(interaction, stats, messageId, rerollCount, history) {
+async function createStatusDisplay(interaction, stats, messageId, rerollCount, history, name, ver) {
     const userId = interaction.user.id;
-    const embed = await createStatusEmbed(interaction, stats, userId, rerollCount, history);
-    const components = createStatusComponents(stats, messageId, userId);
+    const embed = await createStatusEmbed(interaction, stats, userId, rerollCount, history, name, ver);
+    const components = createStatusComponents(stats, messageId, userId, ver);
     return {
         embeds: [embed],
-        components: [components]
+        components: components
     };
 }
-async function createStatusEmbed(interaction, stats, userId, rerollCount, history) {
+async function createStatusEmbed(interaction, stats, userId, rerollCount, history, name, ver) {
     const user = await interaction.client.users.fetch(userId);
     const embed = new discord_js_1.EmbedBuilder()
         .setColor(0x888888)
@@ -21,7 +21,9 @@ async function createStatusEmbed(interaction, stats, userId, rerollCount, histor
         name: user.username,
         iconURL: user.displayAvatarURL()
     })
-        .setTitle('CoC 6th CHAR STATUS');
+        .setTitle(`CoC ${ver} CHAR STATUS`)
+        .setDescription(`NAME: ${name}`)
+        .setFooter({ text: ver });
     const total = statusData_1.statOrder.reduce((sum, stat) => sum + stats[stat], 0);
     const db = calculateDamageBonus(stats.siz, stats.str);
     const luc = (stats.pow * 5).toString();
@@ -40,8 +42,8 @@ async function createStatusEmbed(interaction, stats, userId, rerollCount, histor
     embed.addFields({ name: '\u200B', value: '\u200B', inline: true }, { name: `Total: ${total}`, value: `**DB: ${db}**`, inline: false }, { name: `LUC: ${luc}\nKNW: ${knw}\nIDA: ${ida}`, value: '\u200B', inline: true }, { name: `HP: ${hp}\nMP: ${mp}\nSAN: ${san}`, value: '\u200B', inline: true }, { name: `基礎職業P: ${job_point} 興味P: ${inter_point}`, value: `**振り直し回数: ${rerollCount}**`, inline: false }, { name: `変更履歴`, value: history || '\u200B', inline: false });
     return embed;
 }
-function createStatusComponents(stats, messageId, userId) {
-    const row = new discord_js_1.ActionRowBuilder()
+function createStatusComponents(stats, messageId, userId, ver) {
+    const selectRow = new discord_js_1.ActionRowBuilder()
         .addComponents(new discord_js_1.StringSelectMenuBuilder()
         .setCustomId(`reroll:${messageId}:${userId}`)
         .setPlaceholder('振り直すステータス')
@@ -50,7 +52,12 @@ function createStatusComponents(stats, messageId, userId) {
         value: stat,
         description: `${stats[stat] ?? 0} ${stats.details?.[stat] || ''}`
     }))));
-    return row;
+    const buttonRow = new discord_js_1.ActionRowBuilder()
+        .addComponents(new discord_js_1.ButtonBuilder()
+        .setURL(`https://iachara.com/new/costom/webdice?var=${ver}&STR=${stats.str}&CON=${stats.con}&POW=${stats.pow}&DEX=${stats.dex}&APP=${stats.app}&SIZ=${stats.siz}&INT=${stats.int}&EDU=${stats.edu}`)
+        .setLabel('iacharaに出力')
+        .setStyle(discord_js_1.ButtonStyle.Link));
+    return [selectRow, buttonRow];
 }
 function calculateDamageBonus(siz, str) {
     const total = siz + str;

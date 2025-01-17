@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, Interaction } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, Interaction, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { statOrder, StatusData } from '../types/statusData';
 
 export async function createStatusDisplay(
@@ -6,15 +6,17 @@ export async function createStatusDisplay(
     stats: StatusData,
     messageId: string,
     rerollCount: number,
-    history: string
+    history: string,
+    name: string,
+    ver: string
 ) {
     const userId = interaction.user.id;
-    const embed = await createStatusEmbed(interaction, stats, userId, rerollCount, history);
-    const components = createStatusComponents(stats, messageId, userId);
+    const embed = await createStatusEmbed(interaction, stats, userId, rerollCount, history, name, ver);
+    const components = createStatusComponents(stats, messageId, userId, ver);
 
     return {
         embeds: [embed],
-        components: [components]
+        components: components
     };
 }
 
@@ -23,7 +25,9 @@ async function createStatusEmbed(
     stats: StatusData,
     userId: string,
     rerollCount: number,
-    history: string
+    history: string,
+    name: string,
+    ver: string
 ) {
     const user = await interaction.client.users.fetch(userId);
     
@@ -33,7 +37,9 @@ async function createStatusEmbed(
             name: user.username,
             iconURL: user.displayAvatarURL()
         })
-        .setTitle('CoC 6th CHAR STATUS');
+        .setTitle(`CoC ${ver} CHAR STATUS`)
+        .setDescription(`NAME: ${name}`)
+        .setFooter({ text: ver });
     
     const total = statOrder.reduce((sum, stat) => sum + stats[stat], 0);
     const db = calculateDamageBonus(stats.siz, stats.str);
@@ -69,8 +75,8 @@ async function createStatusEmbed(
     return embed;
 }
 
-function createStatusComponents(stats: Partial<StatusData>, messageId?: string, userId?: string) {
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>()
+function createStatusComponents(stats: Partial<StatusData>, messageId?: string, userId?: string, ver?: string) {
+    const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId(`reroll:${messageId}:${userId}`)
@@ -84,7 +90,15 @@ function createStatusComponents(stats: Partial<StatusData>, messageId?: string, 
                 )
         );
 
-    return row;
+        const buttonRow = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+            new ButtonBuilder()
+                .setURL(`https://iachara.com/new/costom/webdice?var=${ver}&STR=${stats.str}&CON=${stats.con}&POW=${stats.pow}&DEX=${stats.dex}&APP=${stats.app}&SIZ=${stats.siz}&INT=${stats.int}&EDU=${stats.edu}`)
+                .setLabel('iacharaに出力')
+                .setStyle(ButtonStyle.Link)
+        );
+
+    return [selectRow, buttonRow];
 }
 
 function calculateDamageBonus(siz: number, str: number): string {

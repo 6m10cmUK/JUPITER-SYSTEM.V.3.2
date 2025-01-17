@@ -51,7 +51,6 @@ async function diceRoll(message) {
                 }
             }
         }
-        let reply = `> ${target} ＞ ${calculation} ＞ ${totalResult}`;
         const embed = new discord_js_1.EmbedBuilder()
             .setAuthor({ name: message.author.displayName, iconURL: message.author.displayAvatarURL() })
             .setDescription(`${message.content} \n＞ ${calculation} ＞ **${totalResult}**`)

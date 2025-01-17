@@ -27,6 +27,8 @@ async function handleRerollInteraction(interaction) {
     const statusData = {
         details: {}
     };
+    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
+    const ver = embed.data.footer?.text ?? '6';
     let rerollCount = 0;
     let resultTitle = {};
     statusData_1.statOrder.forEach((stat, index) => {
@@ -45,7 +47,7 @@ async function handleRerollInteraction(interaction) {
         }
     });
     rerollCount++;
-    const display = await (0, createStatus_1.createStatusDisplay)(interaction, statusData, messageId, rerollCount, fields.find(field => field.name === "変更履歴")?.value ?? '');
+    const display = await (0, createStatus_1.createStatusDisplay)(interaction, statusData, messageId, rerollCount, fields.find(field => field.name === "変更履歴")?.value ?? '', name, ver);
     await message.edit(display);
     const rerollResult = (0, rollAllStats_1.rollIndividualStatus)(interaction.values[0]);
     const rerollEmbed = new discord_js_1.EmbedBuilder()

@@ -3,8 +3,7 @@ import { MessageUseCase } from '../../usecases/MessageUseCase';
 import { Command } from '../../interfaces/Command';
 import { handleRerollInteraction } from '../../interactions/rerollInteraction';
 import { handleConfirmRerollInteraction } from '../../interactions/confirmRerollInteraction';
-import { rollDice, formatDiceDetail } from '../../commons/dice';
-import { diceRoll } from '../../commands/diceRoll';
+import { diceRoll } from '../../commands/classicCommands/diceRoll';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -26,8 +25,17 @@ export class DiscordAdapter {
         const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
 
         for (const file of commandFiles) {
-            const { command } = await import(path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js')));
-            this.commands.set(command.data.name, command);
+            try {
+                const filePath = path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'));
+                const { command } = await import(filePath);
+                if (command?.data?.name) {
+                    this.commands.set(command.data.name, command);
+                } else {
+                    console.warn(`${file}のコマンド定義が不正だよ`);
+                }
+            } catch (error) {
+                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+            }
         }
     }
 
@@ -65,11 +73,6 @@ export class DiscordAdapter {
     async handleMessage(message: Message, useCase: MessageUseCase) {
 
         await diceRoll(message);
-
-        if (message.content === 'ccb') {
-            const roll = rollDice(3, 6);
-            await message.reply(`ダイスを振りました: ${roll}`);
-        }
 
         if (!message.content.startsWith(this.prefix)) return;
 

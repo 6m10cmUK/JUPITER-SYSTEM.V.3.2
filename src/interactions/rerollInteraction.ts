@@ -32,6 +32,9 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
         details: {}
     };
 
+    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
+    const ver = embed.data.footer?.text ?? '6';
+
     let rerollCount = 0;
 
     let resultTitle: { [key in StatKey]?: string } = {};
@@ -53,6 +56,7 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
         }
     });
 
+
     rerollCount++;
 
     const display = await createStatusDisplay(
@@ -60,7 +64,9 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
         statusData as StatusData,
         messageId,
         rerollCount,
-        fields.find(field => field.name === "変更履歴")?.value ?? ''
+        fields.find(field => field.name === "変更履歴")?.value ?? '',
+        name,
+        ver
     );
 
     await message.edit(display);

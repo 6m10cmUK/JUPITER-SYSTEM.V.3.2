@@ -32,7 +32,8 @@ export async function handleConfirmRerollInteraction(interaction: ButtonInteract
 
     const fields = embed.data.fields;
 
-    console.log(fields);
+    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
+    const ver = embed.data.footer?.text ?? '6';
 
     const statusData: Partial<StatusData> & { details: { [key: string]: string } } = {
         details: {}
@@ -65,7 +66,9 @@ export async function handleConfirmRerollInteraction(interaction: ButtonInteract
         statusData as StatusData,
         messageId,
         Number(rerollCount),
-        history
+        history,
+        name,
+        ver
     );
 
     await originalMessage.edit(display);

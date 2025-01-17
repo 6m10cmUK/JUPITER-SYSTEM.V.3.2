@@ -28,7 +28,8 @@ async function handleConfirmRerollInteraction(interaction) {
         return;
     }
     const fields = embed.data.fields;
-    console.log(fields);
+    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
+    const ver = embed.data.footer?.text ?? '6';
     const statusData = {
         details: {}
     };
@@ -49,7 +50,7 @@ async function handleConfirmRerollInteraction(interaction) {
         history += "`\n";
     }
     history += `${statType.toUpperCase()}: ${oldValue} → ${rerollResult} ${details}`;
-    const display = await (0, createStatus_1.createStatusDisplay)(interaction, statusData, messageId, Number(rerollCount), history);
+    const display = await (0, createStatus_1.createStatusDisplay)(interaction, statusData, messageId, Number(rerollCount), history, name, ver);
     await originalMessage.edit(display);
     interaction.update({
         embeds: [

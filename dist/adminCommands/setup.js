@@ -50,14 +50,49 @@ async function execute(message, guildId) {
         const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
         commands.push(command.data.toJSON());
     }
+    let commandNames = message.content.split(' ')[1] === 'all' ? commands.map(command => command.name) : message.content.split(' ').slice(1);
+    if (commandNames.length === 0) {
+        return;
+    }
+    if (message.content.split(' ')[1] === 'standard') {
+        commandNames = [
+            "choice",
+            "feature",
+            "job",
+            "roll",
+            "status"
+        ];
+    }
+    const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
     const rest = new discord_js_1.REST().setToken(config_json_1.default.token);
     try {
-        console.log(`${commands.length}個のコマンドを登録するよ`);
-        const data = await rest.put(discord_js_1.Routes.applicationGuildCommands(config_json_1.default.applicationId, guildId), { body: commands });
-        await message.reply(`${commands.length}個のコマンドを登録したよ！`);
+        await rest.put(discord_js_1.Routes.applicationGuildCommands(config_json_1.default.applicationId, guildId), { body: commandsToRegister });
+        const embed = new discord_js_1.EmbedBuilder()
+            .setTitle('SUCCESS')
+            .setAuthor({
+            name: message.author.displayName,
+            iconURL: message.author.displayAvatarURL()
+        })
+            .setFields({
+            name: '[JUPITER-SYSTEM v3.2.0] SETUP COMPLETE',
+            value: commandNames.join(' '),
+        })
+            .setColor(0x0099ff);
+        await message.reply({ embeds: [embed] });
     }
     catch (error) {
         console.error('エラー:', error);
-        await message.reply('コマンドの登録中にエラーが発生しちゃった...');
+        const embed = new discord_js_1.EmbedBuilder()
+            .setTitle('ERROR')
+            .setAuthor({
+            name: message.author.displayName,
+            iconURL: message.author.displayAvatarURL()
+        })
+            .setFields({
+            name: '[JUPITER-SYSTEM v3.2.0] SETUP FAILED',
+            value: error instanceof Error ? error.message : String(error),
+        })
+            .setColor(0xff0000);
+        await message.reply({ embeds: [embed] });
     }
 }

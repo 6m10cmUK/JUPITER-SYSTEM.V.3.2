@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.command = void 0;
 const discord_js_1 = require("discord.js");
-const createStatus_1 = require("../commons/createStatus");
+const createStatusDisplay_1 = require("../commons/createStatusDisplay");
+const createStatusDisplayVer7_1 = require("../commons/createStatusDisplayVer7");
 const rollAllStats_1 = require("../commons/rollAllStats");
+const rollAllStatsVer7_1 = require("../commons/rollAllStatsVer7");
 exports.command = {
     data: new discord_js_1.SlashCommandBuilder()
         .setName('status')
@@ -23,14 +25,14 @@ exports.command = {
         const replyMessage = await interaction.fetchReply();
         const messageId = replyMessage?.id;
         if (type === 'ver6') {
-            const statsData = (0, rollAllStats_1.rollAllStats)(type);
-            const display = (0, createStatus_1.createStatusDisplay)(interaction, statsData, messageId, 0, '', name, '6');
+            const statsData = (0, rollAllStats_1.rollAllStats)();
+            const display = (0, createStatusDisplay_1.createStatusDisplay)(interaction, statsData, messageId, 0, '', name, '6');
             const { embeds, components } = await display;
             await interaction.editReply({ embeds, components });
         }
         else if (type === 'ver7') {
-            const statsData = (0, rollAllStats_1.rollAllStats)(type);
-            const display = (0, createStatus_1.createStatusDisplay)(interaction, statsData, messageId, 0, '', name, '7');
+            const statsData = (0, rollAllStatsVer7_1.rollAllStatsVer7)();
+            const display = (0, createStatusDisplayVer7_1.createStatusDisplayVer7)(interaction, statsData, messageId, 0, '', name, '7');
             const { embeds, components } = await display;
             await interaction.editReply({ embeds, components });
         }

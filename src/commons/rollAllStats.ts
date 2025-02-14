@@ -8,8 +8,7 @@ import { StatusData } from '../types/statusData';
  * @param faces ダイスの面数
  * @returns {number[]} 出目の配列
  */
-export function rollAllStats(version: string): StatusData {
-    if (version === 'ver6') {
+export function rollAllStats(): StatusData {
         const strRoll = rollDice(3, 6);
         const conRoll = rollDice(3, 6);
         const powRoll = rollDice(3, 6);
@@ -38,31 +37,7 @@ export function rollAllStats(version: string): StatusData {
                 int: formatDiceDetail(intRoll, 1, 6),
                 edu: formatDiceDetail(eduRoll, 1, 3)
             }
-        };
-    } else if (version === 'ver7') {
-        return {
-            str: 0,
-            con: 0,
-            pow: 0,
-            dex: 0,
-            app: 0,
-            siz: 0,
-            int: 0,
-            edu: 0,
-            details: {
-                str: '',
-                con: '',
-                pow: '',
-                dex: '',
-                app: '',
-                siz: '',
-                int: '',
-                edu: ''
-            }
-        };
-    } else {
-        throw new Error('Invalid version');
-    }
+    };
 }
 
 export function rollIndividualStatus(

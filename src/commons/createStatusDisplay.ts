@@ -41,6 +41,7 @@ async function createStatusEmbed(
         .setDescription(`NAME: ${name}`)
         .setFooter({ text: ver });
     
+    
     const total = statOrder.reduce((sum, stat) => sum + stats[stat], 0);
     const db = calculateDamageBonus(stats.siz, stats.str);
 
@@ -76,7 +77,7 @@ async function createStatusEmbed(
 }
 
 function createStatusComponents(stats: Partial<StatusData>, messageId?: string, userId?: string, ver?: string) {
-    const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
+    const rerollSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId(`reroll:${messageId}:${userId}`)
@@ -98,7 +99,21 @@ function createStatusComponents(stats: Partial<StatusData>, messageId?: string, 
                 .setStyle(ButtonStyle.Link)
         );
 
-    return [selectRow, buttonRow];
+        const ChangeSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
+        .addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId(`change:${messageId}:${userId}`)
+                .setPlaceholder('入れ替えるステータス')
+                .addOptions(
+                    statOrder.map(stat => ({
+                        label: `${statOrder.indexOf(stat) + 1}️⃣ ${stat.toUpperCase()}`,
+                        value: stat,
+                        description: `${stats[stat] ?? 0} ${stats.details?.[stat] || ''}`
+                    }))
+                )
+        );
+
+    return [rerollSelectRow, buttonRow, ChangeSelectRow];
 }
 
 function calculateDamageBonus(siz: number, str: number): string {
@@ -114,101 +129,4 @@ function calculateDamageBonus(siz: number, str: number): string {
     } else {
         return '+1D6';
     }
-}
-
-interface StatusField {
-    name: string;
-    value: string;
-    inline?: boolean;
-}
-
-function updateStatusEmbed(
-    originalEmbed: any,
-    statType: string,
-    newValue: number,
-    diceDetail: string,
-    rerollCount: number
-) {
-    const fields = [...originalEmbed.fields];
-    
-    // ステータス値の更新
-    const statIndex = fields.findIndex(field => 
-        field.name.toLowerCase().includes(statType.toLowerCase())
-    );
-    if (statIndex !== -1) {
-        const oldValue = Number(fields[statIndex].name.match(/\d+$/)?.[0] ?? 0);
-        fields[statIndex] = {
-            name: fields[statIndex].name.replace(/\d+$/, newValue.toString()),
-            value: diceDetail,
-            inline: true
-        };
-
-        // Total値の更新
-        const totalIndex = fields.findIndex(field => field.name === 'Total');
-        if (totalIndex !== -1) {
-            const totalValue = Number(fields[totalIndex].value) - oldValue + newValue;
-            fields[totalIndex].value = totalValue.toString();
-        }
-
-        // 振り直し回数の更新
-        const rerollField = fields.find(field => field.value.includes('振り直し回数:'));
-        if (rerollField) {
-            rerollField.value = `**振り直し回数: ${rerollCount}**`;
-        }
-
-        // 変更履歴の更新
-        const historyField = fields.find(field => field.name === '変更履歴');
-        if (historyField) {
-            historyField.value = `${historyField.value}${statType.toUpperCase()} ${oldValue} → ${newValue} | `;
-        } else {
-            fields.push({
-                name: '変更履歴',
-                value: `${statType.toUpperCase()} ${oldValue} → ${newValue} | `,
-                inline: false
-            });
-        }
-    }
-
-    return new EmbedBuilder()
-        .setFields(fields)
-        .setColor(0x888888);
-}
-
-export async function updateStatusDisplay(
-    originalEmbed: any,
-    statType: string,
-    newValue: number,
-    diceDetail: string,
-    rerollCount: number,
-    messageId?: string
-) {
-    const embed = updateStatusEmbed(originalEmbed, statType, newValue, diceDetail, rerollCount);
-    
-    // 現在のステータスを取得
-    const stats: { [K in Exclude<keyof StatusData, 'details'>]?: number } = {};
-    originalEmbed.fields.forEach((field: StatusField) => {
-        const match = field.name.match(/([A-Z]+): (\d+)/);
-        if (match) {
-            stats[match[1].toLowerCase() as Exclude<keyof StatusData, 'details'>] = Number(match[2]);
-        }
-    });
-    stats[statType.toLowerCase() as Exclude<keyof StatusData, 'details'>] = newValue;
-
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>()
-        .addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId(messageId ? `reroll:${messageId}` : 'reroll')
-                .setPlaceholder('振り直すステータス')
-                .addOptions(
-                    statOrder.map((key: Exclude<keyof StatusData, 'details'>, index) => ({
-                        label: `${index + 1}️⃣ ${key.toUpperCase()}: ${stats[key]}`,
-                        value: messageId ? `${messageId}:${key}` : key
-                    }))
-                )
-        );
-
-    return {
-        embed,
-        components: [row]
-    };
 }

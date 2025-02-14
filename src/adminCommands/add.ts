@@ -30,6 +30,12 @@ export async function execute(message: Message, guildId: string) {
         // ... existing error handling code ...
     }
 
+    let addCommandNames = message.content.split(' ').slice(1);
+    if (addCommandNames.length === 0) {
+        return;
+    }
+    registeredCommandNames = [...registeredCommandNames, ...addCommandNames];
+
     const commandsToRegister = commands.filter(command => !registeredCommandNames.includes(command.name));
 
     try {
@@ -46,7 +52,7 @@ export async function execute(message: Message, guildId: string) {
         })
         .setFields(
             { 
-                name: '[JUPITER-SYSTEM v3.2.0] UPDATE COMPLETE', 
+                name: '[JUPITER-SYSTEM v3.2.0] ADD SETUP COMPLETE', 
                 value: registeredCommandNames.join(' '), 
             }
         )

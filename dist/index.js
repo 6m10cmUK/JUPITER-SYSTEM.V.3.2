@@ -23,7 +23,7 @@ process.on('unhandledRejection', error => {
 const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client);
 const messageUseCase = new MessageUseCase_1.MessageUseCase();
 client.once('ready', () => {
-    console.log('Botが準備完了だよ！');
+    console.log('JUPITER-SYSTEM.V.3.2 is ready.');
 });
 client.on('messageCreate', async (message) => {
     if (message.author.bot)

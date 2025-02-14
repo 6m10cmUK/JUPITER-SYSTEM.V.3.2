@@ -1,42 +1,8 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.command = void 0;
 const discord_js_1 = require("discord.js");
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
+const createJobDisplay_1 = require("../commons/createJobDisplay");
 exports.command = {
     data: new discord_js_1.SlashCommandBuilder()
         .setName('job')
@@ -57,22 +23,25 @@ exports.command = {
         .setDescription('検索したい職業ポイント名')
         .setRequired(true)))
         .addSubcommand((subcommand) => subcommand.setName('all')
-        .setDescription('職業一覧')),
+        .setDescription('職業一覧'))
+        .addSubcommand((subcommand) => subcommand.setName('random')
+        .setDescription('ランダムで職業を表示')
+        .addIntegerOption((option) => option.setName('count')
+        .setDescription('表示する職業の数')
+        .setMinValue(1)
+        .setMaxValue(8)
+        .setRequired(false))),
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
         await interaction.deferReply();
-        if (subcommand == 'all') {
+        const query = interaction.options.getString('query') ?? '';
+        if (subcommand === 'random') {
+            const count = interaction.options.getInteger('count') ?? 1;
+            const display = await (0, createJobDisplay_1.createJobDisplay)(query, subcommand, count);
+            await interaction.editReply(display);
             return;
         }
-        const query = interaction.options.getString('query', true);
-        try {
-            const dataPath = path.join(process.cwd(), 'src', 'data', 'jobs.json');
-            const jobData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-            const response = jobData.filter((job) => job[subcommand].includes(query));
-            console.log(response);
-        }
-        catch (error) {
-            console.error('検索中にエラーが発生したよ:', error);
-        }
+        const display = await (0, createJobDisplay_1.createJobDisplay)(query, subcommand, 1);
+        await interaction.editReply(display);
     }
 };

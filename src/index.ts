@@ -23,7 +23,7 @@ const discordAdapter = new DiscordAdapter(client);
 const messageUseCase = new MessageUseCase();
 
 client.once('ready', () => {
-    console.log('Botが準備完了だよ！');
+    console.log('JUPITER-SYSTEM.V.3.2 is ready.');
 });
 
 client.on('messageCreate', async (message) => {

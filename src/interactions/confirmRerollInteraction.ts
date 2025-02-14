@@ -1,5 +1,5 @@
 import { ButtonInteraction, EmbedBuilder } from 'discord.js';
-import { createStatusDisplay } from '../commons/createStatus';
+import { createStatusDisplay } from '../commons/createStatusDisplay';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 
 export async function handleConfirmRerollInteraction(interaction: ButtonInteraction) {
@@ -56,8 +56,9 @@ export async function handleConfirmRerollInteraction(interaction: ButtonInteract
     console.log(statusData, rerollCount);
 
     var history = fields.find(field => field.name === "変更履歴")?.value ?? '';
-    if (Number(rerollCount) > 1) {
-        history += "`\n";
+    console.log(history);
+    if (history.length > 1) {
+        history += "\n";
     }
     history += `${statType.toUpperCase()}: ${oldValue} → ${rerollResult} ${details}`;
 

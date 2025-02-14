@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleConfirmRerollInteraction = handleConfirmRerollInteraction;
 const discord_js_1 = require("discord.js");
-const createStatus_1 = require("../commons/createStatus");
+const createStatusDisplay_1 = require("../commons/createStatusDisplay");
 const statusData_1 = require("../types/statusData");
 async function handleConfirmRerollInteraction(interaction) {
     const [_, statType, rerollResult, details, messageId, rerollCount] = interaction.customId.split(':');
@@ -46,11 +46,12 @@ async function handleConfirmRerollInteraction(interaction) {
     statusData.details[statType] = details;
     console.log(statusData, rerollCount);
     var history = fields.find(field => field.name === "変更履歴")?.value ?? '';
-    if (Number(rerollCount) > 1) {
-        history += "`\n";
+    console.log(history);
+    if (history.length > 1) {
+        history += "\n";
     }
     history += `${statType.toUpperCase()}: ${oldValue} → ${rerollResult} ${details}`;
-    const display = await (0, createStatus_1.createStatusDisplay)(interaction, statusData, messageId, Number(rerollCount), history, name, ver);
+    const display = await (0, createStatusDisplay_1.createStatusDisplay)(interaction, statusData, messageId, Number(rerollCount), history, name, ver);
     await originalMessage.edit(display);
     interaction.update({
         embeds: [

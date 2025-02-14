@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleRerollInteraction = handleRerollInteraction;
 const discord_js_1 = require("discord.js");
 const statusData_1 = require("../types/statusData");
-const createStatus_1 = require("../commons/createStatus");
+const createStatusDisplay_1 = require("../commons/createStatusDisplay");
 const rollAllStats_1 = require("../commons/rollAllStats");
 async function handleRerollInteraction(interaction) {
     const [_, messageId, userId] = interaction.customId.split(':');
@@ -47,7 +47,7 @@ async function handleRerollInteraction(interaction) {
         }
     });
     rerollCount++;
-    const display = await (0, createStatus_1.createStatusDisplay)(interaction, statusData, messageId, rerollCount, fields.find(field => field.name === "変更履歴")?.value ?? '', name, ver);
+    const display = await (0, createStatusDisplay_1.createStatusDisplay)(interaction, statusData, messageId, rerollCount, fields.find(field => field.name === "変更履歴")?.value ?? '', name, ver);
     await message.edit(display);
     const rerollResult = (0, rollAllStats_1.rollIndividualStatus)(interaction.values[0]);
     const rerollEmbed = new discord_js_1.EmbedBuilder()

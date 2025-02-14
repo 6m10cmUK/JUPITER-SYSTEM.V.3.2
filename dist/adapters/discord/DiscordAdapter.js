@@ -34,8 +34,13 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiscordAdapter = void 0;
+const discord_js_1 = require("discord.js");
 const rerollInteraction_1 = require("../../interactions/rerollInteraction");
 const confirmRerollInteraction_1 = require("../../interactions/confirmRerollInteraction");
+const changeInteraction_1 = require("../../interactions/changeInteraction");
+const changeSelectorInteraction_1 = require("../../interactions/changeSelectorInteraction");
+const changeConfirmInteraction_1 = require("../../interactions/changeConfirmInteraction");
+const jobInteraction_1 = require("../../interactions/jobInteraction");
 const diceRoll_1 = require("../../commands/classicCommands/diceRoll");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -83,7 +88,12 @@ class DiscordAdapter {
                 catch (error) {
                     console.error(error);
                     await interaction.reply({
-                        content: 'コマンドの実行中にエラーが発生しちゃった...',
+                        embeds: [
+                            new discord_js_1.EmbedBuilder()
+                                .setTitle('COMMAND EXECUTE FAILED')
+                                .setDescription(error instanceof Error ? error.message : 'Unknown error')
+                                .setColor(0xff0000)
+                        ],
                         ephemeral: true
                     });
                 }
@@ -92,10 +102,22 @@ class DiscordAdapter {
                 if (interaction.customId.startsWith('reroll:')) {
                     await (0, rerollInteraction_1.handleRerollInteraction)(interaction);
                 }
+                if (interaction.customId.startsWith('change:')) {
+                    await (0, changeInteraction_1.handleChangeInteraction)(interaction);
+                }
+                if (interaction.customId.startsWith('change_selector:')) {
+                    await (0, changeSelectorInteraction_1.handleChangeSelectorInteraction)(interaction);
+                }
             }
             else if (interaction.isButton()) {
                 if (interaction.customId.startsWith('confirmReroll:')) {
                     await (0, confirmRerollInteraction_1.handleConfirmRerollInteraction)(interaction);
+                }
+                if (interaction.customId.startsWith('job_')) {
+                    await (0, jobInteraction_1.handleJobInteraction)(interaction);
+                }
+                if (interaction.customId.startsWith('change_confirm:')) {
+                    await (0, changeConfirmInteraction_1.handleChangeConfirmInteraction)(interaction);
                 }
             }
         });
@@ -107,11 +129,17 @@ class DiscordAdapter {
         const commandBody = message.content.slice(this.prefix.length).trim();
         const args = commandBody.split(/\s+/);
         const command = args.shift()?.toLowerCase();
+        const guildId = message.guild?.id;
+        if (!guildId)
+            return;
         if (command === 'setup') {
-            const guildId = message.guild?.id;
-            if (!guildId)
-                return;
             await useCase.executeSetup(message, guildId);
+        }
+        if (command === 'update') {
+            await useCase.executeUpdate(message, guildId);
+        }
+        if (command === 'add') {
+            await useCase.executeAdd(message, guildId);
         }
     }
 }

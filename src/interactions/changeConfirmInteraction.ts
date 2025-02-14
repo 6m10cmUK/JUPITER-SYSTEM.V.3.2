@@ -1,9 +1,13 @@
-import { StringSelectMenuInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { 
+    ButtonInteraction, 
+    EmbedBuilder, 
+} from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
-import { rollIndividualStatus } from '../commons/rollAllStats';
-export async function handleRerollInteraction(interaction: StringSelectMenuInteraction) {
-    const [_, messageId, userId] = interaction.customId.split(':');
+
+export async function handleChangeConfirmInteraction(interaction: ButtonInteraction) {
+    console.log(interaction.customId);
+    const [_,beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
 
     const user = await interaction.client.users.fetch(userId);
 
@@ -32,11 +36,6 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
         details: {}
     };
 
-    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
-    const ver = embed.data.footer?.text ?? '6';
-
-    let rerollCount = 0;
-
     let resultTitle: { [key in StatKey]?: string } = {};
 
     statOrder.forEach((stat, index) => {
@@ -48,42 +47,47 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
             resultTitle[stat] = field.name;
         }
     });
+    let rerollCount = 0;
 
-    fields.forEach(field => {
+        fields.forEach(field => {
         const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
         if (match) {
             rerollCount = parseInt(match[1], 10); // 数字を取得
         }
     });
 
+    const name = embed.data.description?.split('NAME: ')[1] ?? 'キャラクター名';
+    const ver = embed.data.footer?.text ?? '6';
+    
+    const buf = statusData[beforeStat as StatKey]
+    statusData[beforeStat as StatKey] = statusData[afterStat as StatKey]
+    statusData[afterStat as StatKey] = buf
 
-    rerollCount++;
+    const detailBuf = statusData.details[beforeStat as StatKey]
+    statusData.details[beforeStat as StatKey] = statusData.details[afterStat as StatKey]
+    statusData.details[afterStat as StatKey] = detailBuf
+
+    var history = fields.find(field => field.name === "変更履歴")?.value ?? '';
+    if (history.length > 0) {
+        history += "\n";
+    }
+    history += `${beforeStat.toUpperCase()}: ${statusData[beforeStat as StatKey]} ⇄ ${afterStat.toUpperCase()}: ${statusData[afterStat as StatKey]}`;
 
     const display = await createStatusDisplay(
         interaction,
         statusData as StatusData,
         messageId,
         rerollCount,
-        fields.find(field => field.name === "変更履歴")?.value ?? '',
+        history,
         name,
         ver
     );
 
     await message.edit(display);
 
-    const rerollResult = rollIndividualStatus(interaction.values[0] as StatKey);
 
     const rerollEmbed = new EmbedBuilder()
-        .setTitle(`${resultTitle[interaction.values[0] as StatKey]} ＞＞＞ ${rerollResult.result} (${rerollResult.details})`)
+        .setTitle(`~~${resultTitle[afterStat as StatKey]} ⇄ ${resultTitle[beforeStat as StatKey]}~~`)
         .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL() })
-
-    const components = new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId(`confirmReroll:${interaction.values[0]}:${rerollResult.result}:${rerollResult.details}:${messageId}:${rerollCount}`)
-                .setLabel('確定')
-                .setStyle(ButtonStyle.Primary)
-        );
-
-    await interaction.reply({ embeds: [rerollEmbed], components: [components]});
+    await interaction.update({ embeds: [rerollEmbed], components: []});
 } 

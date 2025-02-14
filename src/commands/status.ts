@@ -1,7 +1,9 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandStringOption } from 'discord.js';
 import { Command } from '../interfaces/Command';
-import { createStatusDisplay } from '../commons/createStatus';
+import { createStatusDisplay } from '../commons/createStatusDisplay';
+import { createStatusDisplayVer7 } from '../commons/createStatusDisplayVer7';
 import { rollAllStats } from '../commons/rollAllStats';
+import { rollAllStatsVer7 } from '../commons/rollAllStatsVer7';
 
 export const command: Command = {
     data: new SlashCommandBuilder()
@@ -32,7 +34,7 @@ export const command: Command = {
         const messageId = replyMessage?.id;
 
         if (type === 'ver6') {
-            const statsData = rollAllStats(type);
+            const statsData = rollAllStats();
 
             const display = createStatusDisplay(
                 interaction,
@@ -47,9 +49,9 @@ export const command: Command = {
             const { embeds, components } = await display;
             await interaction.editReply({ embeds, components });
         } else if (type === 'ver7') {
-            const statsData = rollAllStats(type);
+            const statsData = rollAllStatsVer7();
 
-            const display = createStatusDisplay(
+            const display = createStatusDisplayVer7(
                 interaction,
                 statsData,
                 messageId,

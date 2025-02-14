@@ -1,14 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.diceRoll = diceRoll;
+exports.roll = roll;
+exports.ccb = ccb;
+exports.choice = choice;
+exports.res = res;
 const discord_js_1 = require("discord.js");
 const dice_1 = require("../../commons/dice");
+const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
 async function diceRoll(message) {
     if (message.content.includes('\n')) {
         return;
     }
-    let contents = message.content.split(/[\s\u3000]/);
-    const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
+    const content = message.content;
+    let contents = content.split(/[\s\u3000]/);
     let target = contents[0].replace(fullWidthChars, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).toLowerCase();
     let repeat = 1;
     const match = target.toLowerCase().match(/x(\d+)/i);
@@ -19,7 +24,7 @@ async function diceRoll(message) {
     let resultTexts = [];
     let color = 0x888888;
     for (let i = 0; i < repeat; i++) {
-        const result = await roll(target, message);
+        const result = await roll(target, content);
         if (result == null) {
             return;
         }
@@ -32,67 +37,67 @@ async function diceRoll(message) {
     }
     const embed = new discord_js_1.EmbedBuilder()
         .setAuthor({ name: message.author.displayName, iconURL: message.author.displayAvatarURL() })
-        .addFields({ name: message.content, value: resultTexts.join('\n') })
+        .addFields({ name: content, value: resultTexts.join('\n') })
         .setColor(color);
     await message.reply({ embeds: [embed] });
-    async function roll(target, message) {
-        if (target.toLowerCase().startsWith('ccb') || target.toLowerCase().startsWith('1d100<=')) {
-            return await ccb(target);
-        }
-        if (target.toLowerCase().startsWith('choice(')) {
-            const result = await choice(message.content.replace(fullWidthChars, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).toLowerCase());
-            return result;
-        }
-        if (target.toLowerCase().startsWith('res(')) {
-            const result = await res(target);
-            return result;
-        }
-        const diceRegex = /(\d+)[d](\d+)/g;
-        const invalidDiceRegex = /\d+d\d+d\d+/;
-        if (invalidDiceRegex.test(target.toLowerCase())) {
-            return null;
-        }
-        if (!target.toLowerCase().match(diceRegex)) {
-            return null;
-        }
-        let expression = target;
-        let match;
-        let totalResult = 0;
-        let detailedExpression = target;
-        // ダイスロールを先に処理
-        while ((match = diceRegex.exec(expression)) !== null) {
-            const count = parseInt(match[1]);
-            const faces = parseInt(match[2]);
-            const results = (0, dice_1.rollDice)(count, faces);
-            const diceTotal = results.reduce((sum, val) => sum + val, 0);
-            // ダイス部分を計算結果で置換
-            expression = expression.substring(0, match.index) +
-                diceTotal +
-                expression.substring(match.index + match[0].length);
-            // 詳細な式を更新
-            let resultString;
-            if (count > 1) {
-                resultString = `${diceTotal}(${results.join(',')})`;
-            }
-            else {
-                resultString = `${diceTotal}`;
-            }
-            detailedExpression = detailedExpression.replace(match[0], resultString);
-            // 正規表現のインデックスをリセット
-            diceRegex.lastIndex = 0;
-        }
-        // 四則演算の評価
-        try {
-            totalResult = eval(expression);
-            if (isNaN(totalResult)) {
-                return null;
-            }
-        }
-        catch (error) {
-            return null;
-        }
-        return [` ＞ ${detailedExpression} ＞ **${totalResult}**`, 0x888888];
+}
+async function roll(target, content) {
+    if (target.toLowerCase().startsWith('ccb') || target.toLowerCase().startsWith('1d100<=')) {
+        return await ccb(target);
     }
+    if (target.toLowerCase().startsWith('choice(')) {
+        const result = await choice(content.replace(fullWidthChars, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).toLowerCase());
+        return result;
+    }
+    if (target.toLowerCase().startsWith('res(')) {
+        const result = await res(target);
+        return result;
+    }
+    const diceRegex = /(\d+)[d](\d+)/g;
+    const invalidDiceRegex = /\d+d\d+d\d+/;
+    if (invalidDiceRegex.test(target.toLowerCase())) {
+        return null;
+    }
+    if (!target.toLowerCase().match(diceRegex)) {
+        return null;
+    }
+    let expression = target;
+    let match;
+    let totalResult = 0;
+    let detailedExpression = target;
+    // ダイスロールを先に処理
+    while ((match = diceRegex.exec(expression)) !== null) {
+        const count = parseInt(match[1]);
+        const faces = parseInt(match[2]);
+        const results = (0, dice_1.rollDice)(count, faces);
+        const diceTotal = results.reduce((sum, val) => sum + val, 0);
+        // ダイス部分を計算結果で置換
+        expression = expression.substring(0, match.index) +
+            diceTotal +
+            expression.substring(match.index + match[0].length);
+        // 詳細な式を更新
+        let resultString;
+        if (count > 1) {
+            resultString = `${diceTotal}(${results.join(',')})`;
+        }
+        else {
+            resultString = `${diceTotal}`;
+        }
+        detailedExpression = detailedExpression.replace(match[0], resultString);
+        // 正規表現のインデックスをリセット
+        diceRegex.lastIndex = 0;
+    }
+    // 四則演算の評価
+    try {
+        totalResult = eval(expression);
+        if (isNaN(totalResult)) {
+            return null;
+        }
+    }
+    catch (error) {
+        return null;
+    }
+    return [` ＞ ${detailedExpression} ＞ **${totalResult}**`, 0x888888];
 }
 async function ccb(target) {
     const dice = target.split('<=');

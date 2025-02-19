@@ -1,5 +1,6 @@
 import { Message, REST, Routes, EmbedBuilder } from 'discord.js';
-import config from '../config.json';
+import * as dotenv from 'dotenv';
+dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -14,13 +15,13 @@ export async function execute(message: Message, guildId: string) {
         commands.push(command.data.toJSON());
     }
 
-    const rest = new REST().setToken(config.token);
+    const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 
     let registeredCommandNames: string[] = [];
     try {
         // 現在登録されているコマンドを取得
         const registeredCommands = await rest.get(
-            Routes.applicationGuildCommands(config.applicationId, guildId)
+            Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId)
         );
         const commandList = registeredCommands as any[];
         registeredCommandNames = commandList.map((command) => command.name);
@@ -40,7 +41,7 @@ export async function execute(message: Message, guildId: string) {
 
     try {
         await rest.put(
-            Routes.applicationGuildCommands(config.applicationId, guildId),
+            Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId),
             { body: commandsToRegister }
         );
 

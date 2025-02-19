@@ -32,13 +32,11 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.execute = execute;
 const discord_js_1 = require("discord.js");
-const config_json_1 = __importDefault(require("../config.json"));
+const dotenv = __importStar(require("dotenv"));
+dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 async function execute(message, guildId) {
@@ -50,11 +48,11 @@ async function execute(message, guildId) {
         const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
         commands.push(command.data.toJSON());
     }
-    const rest = new discord_js_1.REST().setToken(config_json_1.default.token);
+    const rest = new discord_js_1.REST().setToken(process.env.DISCORD_TOKEN);
     let registeredCommandNames = [];
     try {
         // 現在登録されているコマンドを取得
-        const registeredCommands = await rest.get(discord_js_1.Routes.applicationGuildCommands(config_json_1.default.applicationId, guildId));
+        const registeredCommands = await rest.get(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId));
         const commandList = registeredCommands;
         registeredCommandNames = commandList.map((command) => command.name);
     }
@@ -64,7 +62,7 @@ async function execute(message, guildId) {
     }
     const commandsToRegister = commands.filter(command => !registeredCommandNames.includes(command.name));
     try {
-        await rest.put(discord_js_1.Routes.applicationGuildCommands(config_json_1.default.applicationId, guildId), { body: commandsToRegister });
+        await rest.put(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId), { body: commandsToRegister });
         const embed = new discord_js_1.EmbedBuilder()
             .setTitle('SUCCESS')
             .setAuthor({

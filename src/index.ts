@@ -1,7 +1,8 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { DiscordAdapter } from './adapters/discord/DiscordAdapter';
 import { MessageUseCase } from './usecases/MessageUseCase';
-import config from './config.json';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const client = new Client({ 
     intents: [
@@ -31,4 +32,4 @@ client.on('messageCreate', async (message) => {
     await discordAdapter.handleMessage(message, messageUseCase);
 });
 
-client.login(config.token);
+client.login(process.env.DISCORD_TOKEN);

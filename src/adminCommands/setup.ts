@@ -1,5 +1,6 @@
 import { Message, REST, Routes, EmbedBuilder } from 'discord.js';
-import config from '../config.json';
+import * as dotenv from 'dotenv';
+dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -33,11 +34,11 @@ export async function execute(message: Message, guildId: string) {
     const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
 
 
-    const rest = new REST().setToken(config.token);
+    const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 
     try {
         await rest.put(
-            Routes.applicationGuildCommands(config.applicationId, guildId),
+            Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId),
             { body: commandsToRegister }
         );
 

@@ -35,10 +35,12 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.execute = execute;
 const discord_js_1 = require("discord.js");
+const messages_1 = require("../commons/messages");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const discord_config_1 = require("../config/discord_config");
 async function execute(message, guildId) {
     const commands = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
@@ -48,11 +50,11 @@ async function execute(message, guildId) {
         const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
         commands.push(command.data.toJSON());
     }
-    let commandNames = message.content.split(' ')[1] === 'all' ? commands.map(command => command.name) : message.content.split(' ').slice(1);
+    let commandNames = message.content.split(' ')[1] === '-all' || message.content.split(' ')[1] === '-a' ? commands.map(command => command.name) : message.content.slice(1).split(' ');
     if (commandNames.length === 0) {
         return;
     }
-    if (message.content.split(' ')[1] === 'standard') {
+    if (message.content.split(' ')[1] === '-standard' || message.content.split(' ')[1] === '-s') {
         commandNames = [
             "choice",
             "feature",
@@ -62,35 +64,20 @@ async function execute(message, guildId) {
         ];
     }
     const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
+    if (commandsToRegister.length === 0) {
+        const embed = (0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] SETUP FAILED`, 'commands not found');
+        await message.reply(embed);
+        return;
+    }
     const rest = new discord_js_1.REST().setToken(process.env.DISCORD_TOKEN);
     try {
         await rest.put(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId), { body: commandsToRegister });
-        const embed = new discord_js_1.EmbedBuilder()
-            .setTitle('SUCCESS')
-            .setAuthor({
-            name: message.author.displayName,
-            iconURL: message.author.displayAvatarURL()
-        })
-            .setFields({
-            name: '[JUPITER-SYSTEM v3.2.0] SETUP COMPLETE',
-            value: commandNames.join(' '),
-        })
-            .setColor(0x0099ff);
-        await message.reply({ embeds: [embed] });
+        const embed = (0, messages_1.createSuccessMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
+        await message.reply(embed);
     }
     catch (error) {
         console.error('エラー:', error);
-        const embed = new discord_js_1.EmbedBuilder()
-            .setTitle('ERROR')
-            .setAuthor({
-            name: message.author.displayName,
-            iconURL: message.author.displayAvatarURL()
-        })
-            .setFields({
-            name: '[JUPITER-SYSTEM v3.2.0] SETUP FAILED',
-            value: error instanceof Error ? error.message : String(error),
-        })
-            .setColor(0xff0000);
-        await message.reply({ embeds: [embed] });
+        const embed = (0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] SETUP FAILED`, error instanceof Error ? error.message : String(error));
+        await message.reply(embed);
     }
 }

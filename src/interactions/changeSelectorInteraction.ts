@@ -6,7 +6,10 @@ import {
     ButtonStyle
 } from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
-export async function handleChangeSelectorInteraction(interaction: StringSelectMenuInteraction) {
+
+export const prefix = 'changeSelector';
+
+export async function execute(interaction: StringSelectMenuInteraction) {
 
     const [_, stat, messageId, userId] = interaction.customId.split(':');
 
@@ -58,7 +61,7 @@ export async function handleChangeSelectorInteraction(interaction: StringSelectM
     const newComponents = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
-            .setCustomId(`change_confirm:${interaction.values[0]}:${stat}:${messageId}:${userId}`)
+            .setCustomId(`changeConfirm:${interaction.values[0]}:${stat}:${messageId}:${userId}`)
             .setLabel('確定')
             .setStyle(ButtonStyle.Success)
         );

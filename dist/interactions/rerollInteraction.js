@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleRerollInteraction = handleRerollInteraction;
+exports.prefix = void 0;
+exports.execute = execute;
 const discord_js_1 = require("discord.js");
 const statusData_1 = require("../types/statusData");
 const createStatusDisplay_1 = require("../commons/createStatusDisplay");
 const rollAllStats_1 = require("../commons/rollAllStats");
-async function handleRerollInteraction(interaction) {
+exports.prefix = 'reroll';
+async function execute(interaction) {
     const [_, messageId, userId] = interaction.customId.split(':');
     const user = await interaction.client.users.fetch(userId);
     const errorMessage = (content) => interaction.reply({ content, ephemeral: true });
@@ -43,7 +45,7 @@ async function handleRerollInteraction(interaction) {
     fields.forEach(field => {
         const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
         if (match) {
-            rerollCount = parseInt(match[1], 10); // 数字を取得
+            rerollCount = parseInt(match[1], 10);
         }
     });
     rerollCount++;

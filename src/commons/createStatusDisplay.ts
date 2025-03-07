@@ -96,7 +96,11 @@ function createStatusComponents(stats: Partial<StatusData>, messageId?: string, 
             new ButtonBuilder()
                 .setURL(`https://iachara.com/new/costom/webdice?var=${ver}&STR=${stats.str}&CON=${stats.con}&POW=${stats.pow}&DEX=${stats.dex}&APP=${stats.app}&SIZ=${stats.siz}&INT=${stats.int}&EDU=${stats.edu}`)
                 .setLabel('iacharaに出力')
-                .setStyle(ButtonStyle.Link)
+                .setStyle(ButtonStyle.Link),
+            new ButtonBuilder()
+                .setCustomId(`changeName:${messageId}:${userId}`)
+                .setLabel('名前変更')
+                .setStyle(ButtonStyle.Primary)
         );
 
         const ChangeSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>()

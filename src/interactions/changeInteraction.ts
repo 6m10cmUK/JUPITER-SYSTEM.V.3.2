@@ -7,7 +7,9 @@ import {
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
 
-export async function handleChangeInteraction(interaction: StringSelectMenuInteraction) {
+export const prefix = 'change';
+
+export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     const user = await interaction.client.users.fetch(userId);
@@ -80,7 +82,7 @@ export async function handleChangeInteraction(interaction: StringSelectMenuInter
     const components = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId(`change_selector:${interaction.values[0]}:${messageId}:${userId}`)
+                .setCustomId(`changeSelector:${interaction.values[0]}:${messageId}:${userId}`)
                 .setPlaceholder(`${interaction.values[0].toUpperCase()}:${statusData[interaction.values[0] as StatKey]}と入れ替えるステータス`)
                 .addOptions(
                     statOrder

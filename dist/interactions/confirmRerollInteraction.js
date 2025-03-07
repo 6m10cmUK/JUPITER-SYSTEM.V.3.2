@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleConfirmRerollInteraction = handleConfirmRerollInteraction;
+exports.prefix = void 0;
+exports.execute = execute;
 const discord_js_1 = require("discord.js");
 const createStatusDisplay_1 = require("../commons/createStatusDisplay");
 const statusData_1 = require("../types/statusData");
-async function handleConfirmRerollInteraction(interaction) {
+exports.prefix = 'confirmReroll';
+async function execute(interaction) {
     const [_, statType, rerollResult, details, messageId, rerollCount] = interaction.customId.split(':');
     // 元のメッセージを取得
     const originalMessage = await interaction.channel?.messages.fetch(messageId);

@@ -1,12 +1,38 @@
-import { ButtonInteraction, EmbedBuilder } from 'discord.js';
-import { createStatusDisplay } from '../commons/createStatusDisplay';
+import { 
+    ButtonInteraction, 
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ActionRowBuilder
+} from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
-
-export const prefix = 'confirmReroll';
+import { createStatusDisplay } from '../commons/createStatusDisplay';
+export const prefix = 'changeName';
 
 export async function execute(interaction: ButtonInteraction) {
-    const [_, statType, rerollResult, details, messageId, rerollCount] = interaction.customId.split(':');
+    const [_, messageId, userId] = interaction.customId.split(':');
 
+    const modal = new ModalBuilder()
+        .setCustomId(`nameChange:${messageId}:${userId}`)
+        .setTitle('キャラクター名変更');
+
+    const nameInput = new TextInputBuilder()
+        .setCustomId('name')
+        .setLabel('新しい名前を入力してください')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+    const firstActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput);
+
+    modal.addComponents(firstActionRow);
+
+    await interaction.showModal(modal);
+
+    interaction.client.on('interactionCreate', async (modalInteraction) => {
+        if (!modalInteraction.isModalSubmit()) return;
+        if (modalInteraction.customId !== `nameChange:${messageId}:${userId}`) return;
+
+        const newName = modalInteraction.fields.getTextInputValue('name');
     // 元のメッセージを取得
     const originalMessage = await interaction.channel?.messages.fetch(messageId);
     if (!originalMessage) {
@@ -34,7 +60,6 @@ export async function execute(interaction: ButtonInteraction) {
 
     const fields = embed.data.fields;
 
-    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
     const ver = embed.data.footer?.text ?? '6';
 
     const statusData: Partial<StatusData> & { details: { [key: string]: string } } = {
@@ -50,42 +75,32 @@ export async function execute(interaction: ButtonInteraction) {
         }
     });
 
-    const oldValue = statusData[statType as StatKey];
 
-    statusData[statType as StatKey] = Number(rerollResult);
-    statusData.details[statType] = details;
-
-    console.log(statusData, rerollCount);
 
     var history = fields.find(field => field.name === "変更履歴")?.value ?? '';
-    console.log(history);
     if (history.length > 1) {
         history += "\n";
     }
-    history += `${statType.toUpperCase()}: ${oldValue} → ${rerollResult} ${details}`;
+
+    let rerollCount = 0;
+    fields.forEach(field => {
+        const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
+        if (match) {
+            rerollCount = parseInt(match[1], 10);
+        }
+    });
 
     const display = await createStatusDisplay(
         interaction,
         statusData as StatusData,
         messageId,
-        Number(rerollCount),
+        rerollCount,
         history,
-        name,
+        newName,
         ver
     );
 
     await originalMessage.edit(display);
-
-    
-
-
-    interaction.update({
-        embeds: [
-            new EmbedBuilder()
-                .setTitle(`~~${interaction.message.embeds[0].title}~~`)
-                .setAuthor(interaction.message.embeds[0].author)
-        ],
-        components: []
+    await modalInteraction.deferUpdate();
     });
-}
-
+} 

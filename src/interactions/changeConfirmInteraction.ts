@@ -5,7 +5,9 @@ import {
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
 
-export async function handleChangeConfirmInteraction(interaction: ButtonInteraction) {
+export const prefix = 'changeConfirm';
+
+export async function execute(interaction: ButtonInteraction) {
     console.log(interaction.customId);
     const [_,beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
 

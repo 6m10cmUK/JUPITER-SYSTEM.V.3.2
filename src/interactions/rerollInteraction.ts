@@ -2,7 +2,11 @@ import { StringSelectMenuInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuil
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
 import { rollIndividualStatus } from '../commons/rollAllStats';
-export async function handleRerollInteraction(interaction: StringSelectMenuInteraction) {
+import { InteractionHandler } from '../interfaces/InteractionHandler';
+
+export const prefix = 'reroll';
+
+export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     const user = await interaction.client.users.fetch(userId);
@@ -52,10 +56,9 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
     fields.forEach(field => {
         const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
         if (match) {
-            rerollCount = parseInt(match[1], 10); // 数字を取得
+            rerollCount = parseInt(match[1], 10);
         }
     });
-
 
     rerollCount++;
 

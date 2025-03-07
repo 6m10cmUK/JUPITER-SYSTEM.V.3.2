@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
+import { JUPITER_SYSTEM_VERSION } from '../config/discord_config';
 
 export async function execute(message: Message, guildId: string) {
     const commands = [];
@@ -53,7 +54,7 @@ export async function execute(message: Message, guildId: string) {
         })
         .setFields(
             { 
-                name: '[JUPITER-SYSTEM v3.2.0] ADD SETUP COMPLETE', 
+                name: `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] ADD COMMANDS COMPLETE`, 
                 value: registeredCommandNames.join(' '), 
             }
         )
@@ -70,13 +71,12 @@ export async function execute(message: Message, guildId: string) {
         })
         .setFields(
             { 
-                name: '[JUPITER-SYSTEM v3.2.0] SETUP FAILED', 
+                name: `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] ADD COMMANDS FAILED`, 
                 value: error instanceof Error ? error.message : String(error), 
             }
         )
         .setColor(0xff0000);
         await message.reply({ embeds: [embed] });
-
     }
 }
 

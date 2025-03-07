@@ -39,6 +39,7 @@ const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const discord_config_1 = require("../config/discord_config");
 async function execute(message, guildId) {
     const commands = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
@@ -70,7 +71,7 @@ async function execute(message, guildId) {
             iconURL: message.author.displayAvatarURL()
         })
             .setFields({
-            name: '[JUPITER-SYSTEM v3.2.0] UPDATE COMPLETE',
+            name: `[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] UPDATE COMPLETE`,
             value: registeredCommandNames.join(' '),
         })
             .setColor(0x0099ff);
@@ -85,7 +86,7 @@ async function execute(message, guildId) {
             iconURL: message.author.displayAvatarURL()
         })
             .setFields({
-            name: '[JUPITER-SYSTEM v3.2.0] SETUP FAILED',
+            name: `[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] UPDATE FAILED`,
             value: error instanceof Error ? error.message : String(error),
         })
             .setColor(0xff0000);

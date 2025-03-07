@@ -1,5 +1,4 @@
 import { Client, Message, EmbedBuilder } from 'discord.js';
-import { MessageUseCase } from '../../usecases/MessageUseCase';
 import { Command } from '../../interfaces/Command';
 import { handleRerollInteraction } from '../../interactions/rerollInteraction';
 import { handleConfirmRerollInteraction } from '../../interactions/confirmRerollInteraction';
@@ -15,6 +14,7 @@ import * as path from 'path';
 export class DiscordAdapter {
     private prefix = '/#';
     private commands: Map<string, Command> = new Map();
+    private adminCommands: Map<string, (message: Message, guildId: string) => Promise<void>> = new Map();
 
     constructor(private client: Client) {
         this.init();
@@ -22,6 +22,7 @@ export class DiscordAdapter {
 
     private async init() {
         await this.loadCommands();
+        await this.loadAdminCommands();
         this.setupInteractionHandler();
     }
 
@@ -38,6 +39,22 @@ export class DiscordAdapter {
                 } else {
                     console.warn(`${file}のコマンド定義が不正だよ`);
                 }
+            } catch (error) {
+                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+            }
+        }
+    }
+
+    private async loadAdminCommands() {
+        const adminCommandsPath = path.join(process.cwd(), 'dist/adminCommands');
+        const commandFiles = fs.readdirSync(adminCommandsPath).filter(file => file.endsWith('.js'));
+
+        for (const file of commandFiles) {
+            try {
+                const filePath = path.join(adminCommandsPath, file);
+                const { execute } = await import(filePath);
+                const commandName = file.replace('.js', '');
+                this.adminCommands.set(commandName, execute);
             } catch (error) {
                 console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
             }
@@ -95,8 +112,7 @@ export class DiscordAdapter {
         });
     }
 
-    async handleMessage(message: Message, useCase: MessageUseCase) {
-
+    async handleMessage(message: Message) {
         await diceRoll(message);
 
         if (!message.content.startsWith(this.prefix)) return;
@@ -105,18 +121,11 @@ export class DiscordAdapter {
         const args = commandBody.split(/\s+/);
         const command = args.shift()?.toLowerCase();
         const guildId = message.guild?.id;
-        if (!guildId) return;
+        if (!guildId || !command) return;
 
-        if (command === 'setup') {
-            await useCase.executeSetup(message, guildId);
-        }
-
-        if (command === 'update') {
-            await useCase.executeUpdate(message, guildId);
-        }
-
-        if (command === 'add') {
-            await useCase.executeAdd(message, guildId);
+        const adminCommand = this.adminCommands.get(command);
+        if (adminCommand) {
+            await adminCommand(message, guildId);
         }
     }
 } 

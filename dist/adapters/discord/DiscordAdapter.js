@@ -49,10 +49,12 @@ class DiscordAdapter {
         this.client = client;
         this.prefix = '/#';
         this.commands = new Map();
+        this.adminCommands = new Map();
         this.init();
     }
     async init() {
         await this.loadCommands();
+        await this.loadAdminCommands();
         this.setupInteractionHandler();
     }
     async loadCommands() {
@@ -68,6 +70,21 @@ class DiscordAdapter {
                 else {
                     console.warn(`${file}のコマンド定義が不正だよ`);
                 }
+            }
+            catch (error) {
+                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+            }
+        }
+    }
+    async loadAdminCommands() {
+        const adminCommandsPath = path.join(process.cwd(), 'dist/adminCommands');
+        const commandFiles = fs.readdirSync(adminCommandsPath).filter(file => file.endsWith('.js'));
+        for (const file of commandFiles) {
+            try {
+                const filePath = path.join(adminCommandsPath, file);
+                const { execute } = await Promise.resolve(`${filePath}`).then(s => __importStar(require(s)));
+                const commandName = file.replace('.js', '');
+                this.adminCommands.set(commandName, execute);
             }
             catch (error) {
                 console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
@@ -122,7 +139,7 @@ class DiscordAdapter {
             }
         });
     }
-    async handleMessage(message, useCase) {
+    async handleMessage(message) {
         await (0, diceRoll_1.diceRoll)(message);
         if (!message.content.startsWith(this.prefix))
             return;
@@ -130,16 +147,11 @@ class DiscordAdapter {
         const args = commandBody.split(/\s+/);
         const command = args.shift()?.toLowerCase();
         const guildId = message.guild?.id;
-        if (!guildId)
+        if (!guildId || !command)
             return;
-        if (command === 'setup') {
-            await useCase.executeSetup(message, guildId);
-        }
-        if (command === 'update') {
-            await useCase.executeUpdate(message, guildId);
-        }
-        if (command === 'add') {
-            await useCase.executeAdd(message, guildId);
+        const adminCommand = this.adminCommands.get(command);
+        if (adminCommand) {
+            await adminCommand(message, guildId);
         }
     }
 }

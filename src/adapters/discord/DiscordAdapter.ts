@@ -81,6 +81,7 @@ export class DiscordAdapter {
     private setupInteractionHandler() {
         this.client.on('interactionCreate', async interaction => {
             if (interaction.isChatInputCommand()) {
+                console.log(`execute: ${interaction.commandName}`);
                 const command = this.commands.get(interaction.commandName);
 
                 if (!command) {

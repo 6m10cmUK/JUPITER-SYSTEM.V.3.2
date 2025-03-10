@@ -8,7 +8,7 @@ npm install
 ```
 
 2. 設定ファイルの準備:
-- `src/config.json.example`を`src/config.json`にコピー
+- `src/.example.env`を`src/.env`にコピー
 - 以下の項目を設定:
   - `DISCORD_TOKEN`: Discordボットのトークン
   - `APPLICATION_ID`: アプリケーションID

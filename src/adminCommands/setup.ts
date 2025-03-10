@@ -30,7 +30,8 @@ export async function execute(message: Message, guildId: string) {
             "feature",
             "job",
             "roll",
-            "status"
+            "status",
+            "name"
         ]
     }
 

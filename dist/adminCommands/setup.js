@@ -60,7 +60,8 @@ async function execute(message, guildId) {
             "feature",
             "job",
             "roll",
-            "status"
+            "status",
+            "name"
         ];
     }
     const commandsToRegister = commands.filter(command => commandNames.includes(command.name));

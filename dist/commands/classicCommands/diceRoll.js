@@ -5,8 +5,8 @@ exports.roll = roll;
 exports.ccb = ccb;
 exports.choice = choice;
 exports.res = res;
-const discord_js_1 = require("discord.js");
 const dice_1 = require("../../commons/dice");
+const embedGenerator_1 = require("../../commons/embedGenerator");
 const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
 async function diceRoll(message) {
     if (message.content.includes('\n')) {
@@ -35,8 +35,7 @@ async function diceRoll(message) {
         }
         resultTexts.push(text);
     }
-    const embed = new discord_js_1.EmbedBuilder()
-        .setAuthor({ name: message.author.displayName, iconURL: message.author.displayAvatarURL() })
+    const embed = (0, embedGenerator_1.generateEmbed)(message)
         .addFields({ name: content, value: resultTexts.join('\n') })
         .setColor(color);
     await message.reply({ embeds: [embed] });

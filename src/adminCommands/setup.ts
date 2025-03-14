@@ -1,11 +1,10 @@
-import { Message, REST, Routes, EmbedBuilder } from 'discord.js';
+import { Message, REST, Routes } from 'discord.js';
 import { createErrorMessage, createSuccessMessage } from '../commons/messages';
 
 import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
-import { JUPITER_SYSTEM_VERSION } from '../config/discord_config';
 
 export async function execute(message: Message, guildId: string) {
     const commands = [];
@@ -38,7 +37,7 @@ export async function execute(message: Message, guildId: string) {
     const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
 
     if (commandsToRegister.length === 0) {
-        const embed = createErrorMessage(`[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] SETUP FAILED`, 'commands not found');
+        const embed = createErrorMessage(message, `SETUP FAILED`, 'commands not found');
         await message.reply(embed);
         return;
     }
@@ -51,11 +50,11 @@ export async function execute(message: Message, guildId: string) {
             { body: commandsToRegister }
         );
 
-        const embed = createSuccessMessage(`[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
+        const embed = createSuccessMessage(message, `SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
         await message.reply(embed);
     } catch (error) {
         console.error('エラー:', error);
-        const embed = createErrorMessage(`[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] SETUP FAILED`, error instanceof Error ? error.message : String(error));
+        const embed = createErrorMessage(message, `SETUP FAILED`, error instanceof Error ? error.message : String(error));
         await message.reply(embed);
     }
 }

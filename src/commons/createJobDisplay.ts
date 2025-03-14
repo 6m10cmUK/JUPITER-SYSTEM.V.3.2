@@ -1,7 +1,7 @@
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, Interaction, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Interaction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-
+import { generateEmbed } from './embedGenerator';
 interface JobData {
     name: string;
     skill: string;
@@ -9,10 +9,10 @@ interface JobData {
     detail: string;
 }
 
-export async function createJobDisplay(query: string, subcommand: string, page: number) {
+export async function createJobDisplay(interaction: Interaction, query: string, subcommand: string, page: number) {
     const jobData = await createJobData(query, subcommand);
 
-    const embed = await createJobEmbed(jobData, query, subcommand, page);
+    const embed = await createJobEmbed(interaction, jobData, query, subcommand, page);
     const maxPage = Math.ceil(jobData.length / 8);
     const components = createJobComponents(query, subcommand, page, maxPage);
 
@@ -40,7 +40,7 @@ async function createJobData(query: string, subcommand: string) : Promise<JobDat
     });
 }
 
-async function createJobEmbed(jobDataList: JobData[], query: string, subcommand: string, page: number) {
+async function createJobEmbed(interaction: Interaction, jobDataList: JobData[], query: string, subcommand: string, page: number) {
     let title: string = '職業一覧';
 
     if (subcommand === 'all') {
@@ -65,7 +65,7 @@ async function createJobEmbed(jobDataList: JobData[], query: string, subcommand:
     const end = start + 8;
     const jobData = jobDataList.slice(start, end);
     
-    const embed = new EmbedBuilder()
+    const embed = generateEmbed(interaction)
         .setTitle(title)
         .setDescription(`pages: ${page} / ${maxPage}`)
         .setFooter({ text: `pages: ${page} / ${maxPage}` })

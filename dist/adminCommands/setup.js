@@ -40,7 +40,6 @@ const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const discord_config_1 = require("../config/discord_config");
 async function execute(message, guildId) {
     const commands = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
@@ -66,19 +65,19 @@ async function execute(message, guildId) {
     }
     const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
     if (commandsToRegister.length === 0) {
-        const embed = (0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] SETUP FAILED`, 'commands not found');
+        const embed = (0, messages_1.createErrorMessage)(message, `SETUP FAILED`, 'commands not found');
         await message.reply(embed);
         return;
     }
     const rest = new discord_js_1.REST().setToken(process.env.DISCORD_TOKEN);
     try {
         await rest.put(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId), { body: commandsToRegister });
-        const embed = (0, messages_1.createSuccessMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
+        const embed = (0, messages_1.createSuccessMessage)(message, `SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
         await message.reply(embed);
     }
     catch (error) {
         console.error('エラー:', error);
-        const embed = (0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] SETUP FAILED`, error instanceof Error ? error.message : String(error));
+        const embed = (0, messages_1.createErrorMessage)(message, `SETUP FAILED`, error instanceof Error ? error.message : String(error));
         await message.reply(embed);
     }
 }

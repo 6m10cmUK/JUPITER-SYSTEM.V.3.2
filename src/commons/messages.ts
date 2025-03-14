@@ -1,7 +1,8 @@
-import { EmbedBuilder } from 'discord.js';
-
-function createEmbed(title: string, name: string, description: string) {
-    return new EmbedBuilder()
+import { generateEmbed } from './embedGenerator';
+import { Message, Interaction } from 'discord.js';
+import { JUPITER_SYSTEM_VERSION } from '../config/discord_config';
+function createEmbed(source: Message | Interaction, title: string, name: string, description: string) {
+    return generateEmbed(source)
         .setTitle(title)
         .setFields(
             { 
@@ -11,30 +12,30 @@ function createEmbed(title: string, name: string, description: string) {
         )
 }
 
-export function createSuccessMessage(title: string, description: string) {
+export function createSuccessMessage(source: Message | Interaction, title: string, description: string) {
     return {
         embeds: [
-            createEmbed(`✅ SUCCESS`, title, description)
+            createEmbed(source, `✅ SUCCESS`, `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] ${title}`, description)
                 .setColor(0x00ff00)
         ],
         ephemeral: true
     };
 }
 
-export function createErrorMessage(title: string, description: string) {
+export function createErrorMessage(source: Message | Interaction, title: string, description: string) {
     return {
         embeds: [
-            createEmbed(`❌ ERROR`, title, description)
+            createEmbed(source, `❌ ERROR`, `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] ${title}`, description)
                 .setColor(0xff0000)
         ],
         ephemeral: true
     };
 }
 
-export function createInfoMessage(title: string, description: string) {
+export function createInfoMessage(source: Message | Interaction, title: string, description: string) {
     return {
         embeds: [
-            createEmbed(`ℹ️ INFO`, title, description)
+            createEmbed(source, `ℹ️ INFO`, `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] ${title}`, description)
                 .setColor(0x0099ff)
         ],
         ephemeral: true

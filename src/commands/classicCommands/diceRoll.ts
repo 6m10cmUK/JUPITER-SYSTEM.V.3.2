@@ -1,5 +1,6 @@
-import { Message, EmbedBuilder } from 'discord.js';
+import { Message } from 'discord.js';
 import { rollDice } from '../../commons/dice';
+import { generateEmbed } from '../../commons/embedGenerator';
 
 const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
 
@@ -42,8 +43,7 @@ export async function diceRoll(message: Message) {
         resultTexts.push(text);
     }
 
-    const embed = new EmbedBuilder()
-    .setAuthor({ name: message.author.displayName, iconURL: message.author.displayAvatarURL() })
+    const embed = generateEmbed(message)
     .addFields(
         { name: content, value: resultTexts.join('\n') }
     )

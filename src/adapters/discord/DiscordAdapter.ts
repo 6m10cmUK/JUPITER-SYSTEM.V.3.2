@@ -3,7 +3,7 @@ import { Command } from '../../interfaces/Command';
 import { InteractionHandler } from '../../interfaces/InteractionHandler';
 import { diceRoll } from '../../commands/classicCommands/diceRoll';
 import { createErrorMessage } from '../../commons/messages';
-import { JUPITER_SYSTEM_VERSION } from '../../config/discord_config';
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -95,7 +95,8 @@ export class DiscordAdapter {
                     console.error(error);
                     await interaction.reply(
                         createErrorMessage(
-                            `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] COMMAND EXECUTE FAILED`,
+                            interaction,
+                            `COMMAND EXECUTE FAILED`,
                             error instanceof Error ? error.message : 'Unknown error'
                         )
                     );
@@ -111,7 +112,8 @@ export class DiscordAdapter {
                         console.error(error);
                         await interaction.reply(
                             createErrorMessage(
-                                `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] INTERACTION FAILED`,
+                                interaction,
+                                `INTERACTION FAILED`,
                                 error instanceof Error ? error.message : 'Unknown error'
                             )
                         );
@@ -138,7 +140,8 @@ export class DiscordAdapter {
             if (!message.member?.permissions.has('Administrator') && message.guild?.ownerId !== message.author.id) {
                 await message.reply(
                     createErrorMessage(
-                        `[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] PERMISSION DENIED`,
+                        message,
+                        `PERMISSION DENIED`,
                         'This command can only be used by administrators'
                     )
                 );

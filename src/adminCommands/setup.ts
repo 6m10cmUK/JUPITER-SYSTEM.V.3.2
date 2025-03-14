@@ -1,11 +1,10 @@
-import { Message, REST, Routes, EmbedBuilder } from 'discord.js';
-import { createErrorMessage, createSuccessMessage } from '../commons/messages';
+import { Message, REST, Routes } from 'discord.js';
+import { createErrorMessage, createSuccessMessage, createInfoMessage } from '../commons/messages';
 
 import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
-import { JUPITER_SYSTEM_VERSION } from '../config/discord_config';
 
 export async function execute(message: Message, guildId: string) {
     const commands = [];
@@ -18,10 +17,35 @@ export async function execute(message: Message, guildId: string) {
         commands.push(command.data.toJSON());
     }
 
+    if(message.content.split(' ')[1] === '-help' || message.content.split(' ')[1] === '-h') {
+        const embed = createInfoMessage(message, 'HELP INFORMATION', '```\n' +
+            'SETUP COMMANDS\n' +
+            '-all: 全てのコマンドを登録\n' +
+            '-pro: プログラムコマンドを登録\n' +
+            '-standard: 標準コマンドを登録\n' +
+            '-help: ヘルプを表示\n' +
+            '```');
+        await message.reply(embed);
+        return;
+    }
+
     let commandNames = message.content.split(' ')[1] === '-all' || message.content.split(' ')[1] === '-a' ? commands.map(command => command.name) : message.content.slice(1).split(' ');
 
     if (commandNames.length === 0) {
         return;
+    }
+
+    if (message.content.split(' ')[1] === '-pro' || message.content.split(' ')[1] === '-p') {
+        commandNames = [
+            "choice",
+            "feature",
+            "job",
+            "roll",
+            "status",
+            "name",
+            "category-create",
+            "category-delete"
+        ]
     }
 
     if (message.content.split(' ')[1] === '-standard' || message.content.split(' ')[1] === '-s') {
@@ -38,7 +62,7 @@ export async function execute(message: Message, guildId: string) {
     const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
 
     if (commandsToRegister.length === 0) {
-        const embed = createErrorMessage(`[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] SETUP FAILED`, 'commands not found');
+        const embed = createErrorMessage(message, `SETUP FAILED`, 'commands not found');
         await message.reply(embed);
         return;
     }
@@ -51,11 +75,11 @@ export async function execute(message: Message, guildId: string) {
             { body: commandsToRegister }
         );
 
-        const embed = createSuccessMessage(`[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
+        const embed = createSuccessMessage(message, `SETUP COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
         await message.reply(embed);
     } catch (error) {
         console.error('エラー:', error);
-        const embed = createErrorMessage(`[JUPITER-SYSTEM ${JUPITER_SYSTEM_VERSION}] SETUP FAILED`, error instanceof Error ? error.message : String(error));
+        const embed = createErrorMessage(message, `SETUP FAILED`, error instanceof Error ? error.message : String(error));
         await message.reply(embed);
     }
 }

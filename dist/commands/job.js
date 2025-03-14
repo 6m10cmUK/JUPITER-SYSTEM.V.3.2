@@ -37,11 +37,11 @@ exports.command = {
         const query = interaction.options.getString('query') ?? '';
         if (subcommand === 'random') {
             const count = interaction.options.getInteger('count') ?? 1;
-            const display = await (0, createJobDisplay_1.createJobDisplay)(query, subcommand, count);
+            const display = await (0, createJobDisplay_1.createJobDisplay)(interaction, query, subcommand, count);
             await interaction.editReply(display);
             return;
         }
-        const display = await (0, createJobDisplay_1.createJobDisplay)(query, subcommand, 1);
+        const display = await (0, createJobDisplay_1.createJobDisplay)(interaction, query, subcommand, 1);
         await interaction.editReply(display);
     }
 };

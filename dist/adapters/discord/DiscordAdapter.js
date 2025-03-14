@@ -36,7 +36,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiscordAdapter = void 0;
 const diceRoll_1 = require("../../commands/classicCommands/diceRoll");
 const messages_1 = require("../../commons/messages");
-const discord_config_1 = require("../../config/discord_config");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 class DiscordAdapter {
@@ -121,7 +120,7 @@ class DiscordAdapter {
                 }
                 catch (error) {
                     console.error(error);
-                    await interaction.reply((0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] COMMAND EXECUTE FAILED`, error instanceof Error ? error.message : 'Unknown error'));
+                    await interaction.reply((0, messages_1.createErrorMessage)(interaction, `COMMAND EXECUTE FAILED`, error instanceof Error ? error.message : 'Unknown error'));
                 }
             }
             else if (interaction.isStringSelectMenu() || interaction.isButton()) {
@@ -133,7 +132,7 @@ class DiscordAdapter {
                     }
                     catch (error) {
                         console.error(error);
-                        await interaction.reply((0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] INTERACTION FAILED`, error instanceof Error ? error.message : 'Unknown error'));
+                        await interaction.reply((0, messages_1.createErrorMessage)(interaction, `INTERACTION FAILED`, error instanceof Error ? error.message : 'Unknown error'));
                     }
                 }
             }
@@ -153,7 +152,7 @@ class DiscordAdapter {
         if (adminCommand) {
             // 管理者権限を持っているか確認
             if (!message.member?.permissions.has('Administrator') && message.guild?.ownerId !== message.author.id) {
-                await message.reply((0, messages_1.createErrorMessage)(`[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] PERMISSION DENIED`, 'This command can only be used by administrators'));
+                await message.reply((0, messages_1.createErrorMessage)(message, `PERMISSION DENIED`, 'This command can only be used by administrators'));
                 return;
             }
             await adminCommand(message, guildId);

@@ -9,6 +9,6 @@ export async function execute(interaction: ButtonInteraction) {
         console.error('Invalid customId format:', interaction.customId);
         return;
     }
-    const display = await createJobDisplay(decodeURIComponent(query), subcommand, Number(page));
+    const display = await createJobDisplay(interaction, decodeURIComponent(query), subcommand, Number(page));
     await interaction.update(display);
 }

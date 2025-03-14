@@ -3,12 +3,12 @@ import {
     SlashCommandBuilder, 
     SlashCommandIntegerOption,
     SlashCommandStringOption,
-    EmbedBuilder
 } from 'discord.js';
 import { Command } from '../interfaces/Command';
 import fs from 'fs';
 import path from 'path';
 import { rollDice } from '../commons/dice';
+import { generateEmbed } from '../commons/embedGenerator';
 
 export const command: Command = {
     data: new SlashCommandBuilder()
@@ -37,13 +37,9 @@ export const command: Command = {
         const dataPath = path.join(process.cwd(), 'src', 'data', 'names.json');
         const nameData = await JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 
-        const embed = new EmbedBuilder()
-        .setTitle('ランダム名前')
-        .setAuthor({
-            name: interaction.user.displayName,
-            iconURL: interaction.user.displayAvatarURL()
-        })
-        .setColor(0x888888);
+        const embed = generateEmbed(interaction)
+            .setTitle('ランダム名前')
+            .setColor(0x888888);
 
         const type = interaction.options.getString('type');
         const count = interaction.options.getInteger('count') ?? 1;

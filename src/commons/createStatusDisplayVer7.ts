@@ -1,5 +1,6 @@
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, Interaction, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ActionRowBuilder, StringSelectMenuBuilder, Interaction, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { statOrder, StatusData } from '../types/statusDataVer7';
+import { generateEmbed } from './embedGenerator';
 
 export async function createStatusDisplayVer7(
     interaction: Interaction,
@@ -31,12 +32,7 @@ async function createStatusEmbed(
 ) {
     const user = await interaction.client.users.fetch(userId);
     
-    const embed = new EmbedBuilder()
-        .setColor(0x888888)
-        .setAuthor({
-            name: user.username,
-            iconURL: user.displayAvatarURL()
-        })
+    const embed = generateEmbed(interaction)
         .setTitle(`CoC ${ver} CHAR STATUS`)
         .setDescription(`NAME: ${name}`)
         .setFooter({ text: ver });

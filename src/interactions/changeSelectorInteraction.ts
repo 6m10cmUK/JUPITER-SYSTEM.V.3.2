@@ -1,11 +1,11 @@
 import { 
     StringSelectMenuInteraction, 
-    EmbedBuilder, 
     ActionRowBuilder, 
     ButtonBuilder,
     ButtonStyle
 } from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
+import { generateEmbed } from '../commons/embedGenerator';
 
 export const prefix = 'changeSelector';
 
@@ -54,9 +54,8 @@ export async function execute(interaction: StringSelectMenuInteraction) {
 
 
 
-    const newEmbed = new EmbedBuilder()
+    const newEmbed = generateEmbed(interaction)
         .setTitle(`${resultTitle[stat as StatKey]} ⇄ ${resultTitle[interaction.values[0] as StatKey]}`)
-        .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL() });
 
     const newComponents = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(

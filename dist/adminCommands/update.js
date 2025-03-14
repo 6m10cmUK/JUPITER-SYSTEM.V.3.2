@@ -39,7 +39,7 @@ const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const discord_config_1 = require("../config/discord_config");
+const messages_1 = require("../commons/messages");
 async function execute(message, guildId) {
     const commands = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
@@ -59,37 +59,19 @@ async function execute(message, guildId) {
     }
     catch (error) {
         console.error('エラー:', error);
-        // ... existing error handling code ...
+        const embed = (0, messages_1.createErrorMessage)(message, `UPDATE FAILED`, error instanceof Error ? error.message : String(error));
+        await message.reply(embed);
+        return;
     }
     const commandsToRegister = commands.filter(command => !registeredCommandNames.includes(command.name));
     try {
         await rest.put(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId), { body: commandsToRegister });
-        const embed = new discord_js_1.EmbedBuilder()
-            .setTitle('SUCCESS')
-            .setAuthor({
-            name: message.author.displayName,
-            iconURL: message.author.displayAvatarURL()
-        })
-            .setFields({
-            name: `[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] UPDATE COMPLETE`,
-            value: registeredCommandNames.join(' '),
-        })
-            .setColor(0x0099ff);
-        await message.reply({ embeds: [embed] });
+        const embed = (0, messages_1.createSuccessMessage)(message, `UPDATE COMPLETE`, registeredCommandNames.join(', '));
+        await message.reply(embed);
     }
     catch (error) {
         console.error('エラー:', error);
-        const embed = new discord_js_1.EmbedBuilder()
-            .setTitle('ERROR')
-            .setAuthor({
-            name: message.author.displayName,
-            iconURL: message.author.displayAvatarURL()
-        })
-            .setFields({
-            name: `[JUPITER-SYSTEM ${discord_config_1.JUPITER_SYSTEM_VERSION}] UPDATE FAILED`,
-            value: error instanceof Error ? error.message : String(error),
-        })
-            .setColor(0xff0000);
-        await message.reply({ embeds: [embed] });
+        const embed = (0, messages_1.createErrorMessage)(message, `UPDATE FAILED`, error instanceof Error ? error.message : String(error));
+        await message.reply(embed);
     }
 }

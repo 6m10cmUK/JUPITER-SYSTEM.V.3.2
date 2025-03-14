@@ -1,11 +1,20 @@
-import { ButtonInteraction, EmbedBuilder } from 'discord.js';
+import { ButtonInteraction } from 'discord.js';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
-
+import { generateEmbed } from '../commons/embedGenerator';
+import { createErrorMessage } from '../commons/messages';
 export const prefix = 'confirmReroll';
 
 export async function execute(interaction: ButtonInteraction) {
-    const [_, statType, rerollResult, details, messageId, rerollCount] = interaction.customId.split(':');
+    const [_, statType, rerollResult, details, messageId, rerollCount, userId] = interaction.customId.split(':');
+
+
+    const user = await interaction.client.users.fetch(userId);
+    if(user.id !== interaction.user.id) {
+        await interaction.reply(createErrorMessage(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
+
 
     // 元のメッセージを取得
     const originalMessage = await interaction.channel?.messages.fetch(messageId);
@@ -76,15 +85,11 @@ export async function execute(interaction: ButtonInteraction) {
 
     await originalMessage.edit(display);
 
+    const rerollEmbed = generateEmbed(interaction)
+    .setTitle(`~~${interaction.message.embeds[0].title}~~`)
     
-
-
     interaction.update({
-        embeds: [
-            new EmbedBuilder()
-                .setTitle(`~~${interaction.message.embeds[0].title}~~`)
-                .setAuthor(interaction.message.embeds[0].author)
-        ],
+        embeds: [rerollEmbed],
         components: []
     });
 }

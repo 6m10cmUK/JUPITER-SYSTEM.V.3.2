@@ -2,10 +2,11 @@ import {
     ChatInputCommandInteraction, 
     SlashCommandBuilder, 
     SlashCommandStringOption,
-    EmbedBuilder
 } from 'discord.js';
 import { Command } from '../interfaces/Command';
 import { roll } from './classicCommands/diceRoll';
+import { generateEmbed } from '../commons/embedGenerator';
+
 const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
 
 export const command: Command = {
@@ -53,8 +54,7 @@ export const command: Command = {
             resultTexts.push(text);
         }
     
-        const embed = new EmbedBuilder()
-        .setAuthor({ name: interaction.user.displayName, iconURL: interaction.user.displayAvatarURL() })
+        const embed = generateEmbed(interaction)
         .addFields(
             { name: content, value: resultTexts.join('\n') }
         )

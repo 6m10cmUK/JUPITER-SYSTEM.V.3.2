@@ -1,5 +1,9 @@
 import { Message, REST, Routes } from 'discord.js';
+<<<<<<< HEAD
 import { createErrorMessage, createSuccessMessage, createInfoMessage } from '../commons/messages';
+=======
+import { createErrorMessage, createSuccessMessage } from '../commons/messages';
+>>>>>>> origin/main
 
 import * as dotenv from 'dotenv';
 dotenv.config();

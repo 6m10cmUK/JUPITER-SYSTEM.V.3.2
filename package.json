@@ -17,9 +17,12 @@
   "license": "ISC",
   "dependencies": {
     "@discordjs/rest": "^2.2.0",
+    "axios": "^1.8.3",
+    "cheerio": "^1.0.0",
     "discord-api-types": "^0.37.67",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "puppeteer": "^24.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",

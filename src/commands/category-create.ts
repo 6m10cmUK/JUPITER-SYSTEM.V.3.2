@@ -25,11 +25,13 @@ export const command: Command = {
         )as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.deferReply();
+        
         const name = interaction.options.getString('name') ?? '';
         const guildId = interaction.guild?.id;
 
         if(!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)){
-            await interaction.reply('管理者権限が必要です。');
+            await interaction.editReply(createErrorMessage(interaction,`PERMISSION DENIED`,'This command can only be used by administrators' ));
             return;
         }
 
@@ -52,8 +54,9 @@ export const command: Command = {
                 type: ChannelType.GuildCategory
             });
 
+            let firstChannelId: string | null = null;
             for(let channelName of ["第一陣", "概要", "日程", "ccfolia", "キャラクターシート"]){
-                await interaction.guild?.channels.create({ 
+                const channel = await interaction.guild?.channels.create({ 
                     name: channelName,
                     type: ChannelType.GuildText,
                     parent: category.id,
@@ -72,6 +75,10 @@ export const command: Command = {
                         },
                     ]
                 });
+
+                if(channelName === "第一陣"){
+                    firstChannelId = channel.id;
+                }
             }
 
             let secretChannelNames = ["通過者"];
@@ -80,6 +87,7 @@ export const command: Command = {
             for(let i = 0; i < handOut; i++){
                 secretChannelNames.push(`HO${i + 1}`);
             }
+
             for(let channelName of secretChannelNames){
                 await interaction.guild?.channels.create({ 
                     name: channelName,
@@ -120,11 +128,11 @@ export const command: Command = {
                 });
             }
 
-            await interaction.reply(createSuccessMessage(interaction, 'SUCCESS', `カテゴリ ${name} を作成しました。`));
+            await interaction.editReply(createSuccessMessage(interaction, 'CATEGORY CREATED COMPLETE', `category-name: ${name} <#${firstChannelId}>`));
 
         } catch (error) {
             console.error('エラー:', error);
-            await interaction.reply(createErrorMessage(interaction, 'ERROR', error instanceof Error ? error.message : 'Unknown error'));
+            await interaction.editReply(createErrorMessage(interaction, 'CATEGORY CREATED FAILED', error instanceof Error ? error.message : 'Unknown error'));
         }
     }
 };

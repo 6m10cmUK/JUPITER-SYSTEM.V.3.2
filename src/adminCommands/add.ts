@@ -3,7 +3,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
-import { JUPITER_SYSTEM_VERSION } from '../config/discord_config';
 import { createErrorMessage, createSuccessMessage } from '../commons/messages';
 
 export async function execute(message: Message, guildId: string) {

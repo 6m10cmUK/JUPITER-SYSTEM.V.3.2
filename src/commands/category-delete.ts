@@ -18,9 +18,10 @@ export const command: Command = {
         )as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.deferReply();
 
         if(!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)){
-            await interaction.reply('管理者権限が必要です。');
+            await interaction.editReply(createErrorMessage(interaction,`PERMISSION DENIED`,'This command can only be used by administrators' ));
             return;
         }
 
@@ -52,11 +53,13 @@ export const command: Command = {
                 
                 // Then delete the category itself
                 await category.delete();
-                await interaction.reply(createSuccessMessage(interaction, 'SUCCESS', `カテゴリ ${category.name} とその中のチャンネルを削除しました。`));
+                await interaction.editReply(createSuccessMessage(interaction, 'CATEGORY DELETED COMPLETE', `category-name: ${categoryName}`));
             } catch (error) {
                 console.error('エラー:', error);
-                await interaction.reply(createErrorMessage(interaction, 'ERROR', error instanceof Error ? error.message : 'Unknown error'));
+                await interaction.editReply(createErrorMessage(interaction, 'CATEGORY DELETED FAILED', error instanceof Error ? error.message : 'Unknown error'));
             }
+        } else {
+            await interaction.editReply(createErrorMessage(interaction, 'CATEGORY DELETED FAILED', 'category not found'));
         }
     }
 };

@@ -7,6 +7,7 @@ import {
     PermissionFlagsBits
 } from 'discord.js';
 import { Command } from '../interfaces/Command';
+import { createSuccessMessage, createErrorMessage } from '../commons/messages';
 
 export const command: Command = {
     data: new SlashCommandBuilder()
@@ -119,11 +120,11 @@ export const command: Command = {
                 });
             }
 
-            await interaction.reply(`カテゴリ ${name} を作成しました。`);
+            await interaction.reply(createSuccessMessage(interaction, 'SUCCESS', `カテゴリ ${name} を作成しました。`));
 
         } catch (error) {
             console.error('エラー:', error);
-            await interaction.reply(`カテゴリ ${name} の作成に失敗しました。`);
+            await interaction.reply(createErrorMessage(interaction, 'ERROR', error instanceof Error ? error.message : 'Unknown error'));
         }
     }
 };

@@ -18,6 +18,7 @@ export async function diceRoll(message: Message) {
     let target = contents[0].replace(fullWidthChars, (s) =>
         String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
     ).toLowerCase();
+
     let repeat = 1;
     const match = target.toLowerCase().match(/x(\d+)/i);
     if(match){
@@ -50,7 +51,7 @@ export async function diceRoll(message: Message) {
     )
     .setColor(color);
 
-    console.log(`${message.guild?.id} ${message.author.globalName} ${content}`);
+    console.log(`${message.guild?.id} ${message.author.globalName} ${content} ${resultTexts.join(' ')}`);
 
     await message.reply({ embeds: [embed] });
 }
@@ -64,7 +65,7 @@ export async function roll(target: string, content: string){
     if(target.toLowerCase().startsWith('choice(')){
         const result = await choice(content.replace(fullWidthChars, (s) =>
             String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
-        ).toLowerCase());
+        ));
         return result;
     }
 
@@ -168,7 +169,7 @@ export async function res(target: string){
     if(left == undefined || right == undefined){
         return null;
     }
-    const result = await ccb(`ccb<=${(parseInt(left)-parseInt(right))*5+50}`);
+    const result = await ccb(`1d100<=${(parseInt(left)-parseInt(right))*5+50}`);
 
     return result;
 }

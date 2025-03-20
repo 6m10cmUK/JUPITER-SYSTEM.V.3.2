@@ -5,11 +5,12 @@ const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
 
 export async function diceRoll(message: Message) {
 
-    if (message.content.includes('\n')) {
+
+    const content = message.content;
+
+    if (content.includes('\n')) {
         return;
     }
-    
-    const content = message.content;
 
     let contents = content.split(/[\s\u3000]/);
 
@@ -48,6 +49,8 @@ export async function diceRoll(message: Message) {
         { name: content, value: resultTexts.join('\n') }
     )
     .setColor(color);
+
+    console.log(`${message.guild?.id} ${message.author.globalName} ${content}`);
 
     await message.reply({ embeds: [embed] });
 }
@@ -153,7 +156,6 @@ export async function ccb(target: string){
 }
 
 export async function choice(content: string){
-    console.log(content);
     const choices = content.split('(')[1].split(')')[0].split(/[\s,]+/);
     const result = rollDice(1, choices.length);
     const total = result.reduce((sum, val) => sum + val, 0);

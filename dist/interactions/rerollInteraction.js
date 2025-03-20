@@ -1,13 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleRerollInteraction = handleRerollInteraction;
+exports.prefix = void 0;
+exports.execute = execute;
 const discord_js_1 = require("discord.js");
 const statusData_1 = require("../types/statusData");
 const createStatusDisplay_1 = require("../commons/createStatusDisplay");
 const rollAllStats_1 = require("../commons/rollAllStats");
-async function handleRerollInteraction(interaction) {
+const embedGenerator_1 = require("../commons/embedGenerator");
+const messages_1 = require("../commons/messages");
+exports.prefix = 'reroll';
+async function execute(interaction) {
     const [_, messageId, userId] = interaction.customId.split(':');
     const user = await interaction.client.users.fetch(userId);
+    if (user.id !== interaction.user.id) {
+        await interaction.reply((0, messages_1.createErrorMessage)(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
     const errorMessage = (content) => interaction.reply({ content, ephemeral: true });
     if (!interaction.channel) {
         await errorMessage('チャンネルが見つかりませんでした');
@@ -43,19 +51,18 @@ async function handleRerollInteraction(interaction) {
     fields.forEach(field => {
         const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
         if (match) {
-            rerollCount = parseInt(match[1], 10); // 数字を取得
+            rerollCount = parseInt(match[1], 10);
         }
     });
     rerollCount++;
     const display = await (0, createStatusDisplay_1.createStatusDisplay)(interaction, statusData, messageId, rerollCount, fields.find(field => field.name === "変更履歴")?.value ?? '', name, ver);
     await message.edit(display);
     const rerollResult = (0, rollAllStats_1.rollIndividualStatus)(interaction.values[0]);
-    const rerollEmbed = new discord_js_1.EmbedBuilder()
-        .setTitle(`${resultTitle[interaction.values[0]]} ＞＞＞ ${rerollResult.result} (${rerollResult.details})`)
-        .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL() });
+    const rerollEmbed = (0, embedGenerator_1.generateEmbed)(interaction)
+        .setTitle(`${resultTitle[interaction.values[0]]} ＞＞＞ ${rerollResult.result} (${rerollResult.details})`);
     const components = new discord_js_1.ActionRowBuilder()
         .addComponents(new discord_js_1.ButtonBuilder()
-        .setCustomId(`confirmReroll:${interaction.values[0]}:${rerollResult.result}:${rerollResult.details}:${messageId}:${rerollCount}`)
+        .setCustomId(`confirmReroll:${interaction.values[0]}:${rerollResult.result}:${rerollResult.details}:${messageId}:${rerollCount}:${userId}`)
         .setLabel('確定')
         .setStyle(discord_js_1.ButtonStyle.Primary));
     await interaction.reply({ embeds: [rerollEmbed], components: [components] });

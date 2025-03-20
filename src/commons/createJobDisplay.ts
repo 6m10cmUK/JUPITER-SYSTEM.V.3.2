@@ -1,7 +1,7 @@
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, Interaction, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Interaction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
-
+import { generateEmbed } from './embedGenerator';
 interface JobData {
     name: string;
     skill: string;
@@ -9,10 +9,10 @@ interface JobData {
     detail: string;
 }
 
-export async function createJobDisplay(query: string, subcommand: string, page: number) {
+export async function createJobDisplay(interaction: Interaction, query: string, subcommand: string, page: number) {
     const jobData = await createJobData(query, subcommand);
 
-    const embed = await createJobEmbed(jobData, query, subcommand, page);
+    const embed = await createJobEmbed(interaction, jobData, query, subcommand, page);
     const maxPage = Math.ceil(jobData.length / 8);
     const components = createJobComponents(query, subcommand, page, maxPage);
 
@@ -25,16 +25,22 @@ export async function createJobDisplay(query: string, subcommand: string, page: 
 async function createJobData(query: string, subcommand: string) : Promise<JobData[]> {
     const dataPath = path.join(process.cwd(), 'src', 'data', 'jobs.json');
     const jobData = await JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-    let response: JobData[] = [];
+    
     if (subcommand === 'all') {
-        response = jobData;
-    } else {
-        response = await jobData.filter((job: any) => job[subcommand].includes(query));
+        return jobData;
     }
-    return response;
+    
+    if (subcommand === 'random') {
+        return jobData;
+    }
+
+    return jobData.filter((job: JobData) => {
+        const value = job[subcommand as keyof JobData];
+        return typeof value === 'string' && value.toLowerCase().includes(query.toLowerCase());
+    });
 }
 
-async function createJobEmbed(jobDataList: JobData[], query: string, subcommand: string, page: number) {
+async function createJobEmbed(interaction: Interaction, jobDataList: JobData[], query: string, subcommand: string, page: number) {
     let title: string = '職業一覧';
 
     if (subcommand === 'all') {
@@ -59,7 +65,7 @@ async function createJobEmbed(jobDataList: JobData[], query: string, subcommand:
     const end = start + 8;
     const jobData = jobDataList.slice(start, end);
     
-    const embed = new EmbedBuilder()
+    const embed = generateEmbed(interaction)
         .setTitle(title)
         .setDescription(`pages: ${page} / ${maxPage}`)
         .setFooter({ text: `pages: ${page} / ${maxPage}` })
@@ -77,22 +83,22 @@ function createJobComponents(query: string, subcommand: string, page: number, ma
 
     row.addComponents(
         new ButtonBuilder()
-            .setCustomId(`job_first_${query}_${subcommand}_1`)
+            .setCustomId(`job:first:${query}:${subcommand}:1`)
             .setLabel('<<')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === 1),
         new ButtonBuilder()
-            .setCustomId(`job_prev_${query}_${subcommand}_${page - 1}`)
+            .setCustomId(`job:prev:${query}:${subcommand}:${page - 1}`)
             .setLabel('<')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === 1),
         new ButtonBuilder()
-            .setCustomId(`job_next_${query}_${subcommand}_${page + 1}`)
+            .setCustomId(`job:next:${query}:${subcommand}:${page + 1}`)
             .setLabel('>')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === maxPage),
         new ButtonBuilder()
-            .setCustomId(`job_last_${query}_${subcommand}_${maxPage}`)
+            .setCustomId(`job:last:${query}:${subcommand}:${maxPage}`)
             .setLabel('>>')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === maxPage)

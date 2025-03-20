@@ -2,11 +2,10 @@ import {
     ChatInputCommandInteraction, 
     SlashCommandBuilder,
     SlashCommandStringOption,
-    EmbedBuilder
 } from 'discord.js';
 import { Command } from '../interfaces/Command';
 import { choice } from './classicCommands/diceRoll';
-
+import { generateEmbed } from '../commons/embedGenerator';
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('choice')
@@ -20,16 +19,11 @@ export const command: Command = {
     async execute(interaction: ChatInputCommandInteraction) {
         const args = interaction.options.getString('args') ?? '';
         const [result, color] = await choice(`choice(${args})`);
-        await interaction.reply({embeds: [
-            new EmbedBuilder()
+        const embed = generateEmbed(interaction)
             .setColor(typeof color === 'string' ? parseInt(color, 16) : color)
-            .setAuthor({
-                    name: interaction.user.displayName,
-                    iconURL: interaction.user.displayAvatarURL()
-                })
-                .setFields(
-                    { name: `choice(${args})`, value: result.toString() }
-                )
-        ]});
+            .setFields(
+                { name: `choice(${args})`, value: result.toString() }
+            );
+        await interaction.reply({embeds: [embed]});
     }
 }; 

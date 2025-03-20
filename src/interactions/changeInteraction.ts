@@ -1,16 +1,24 @@
 import { 
     StringSelectMenuInteraction, 
-    EmbedBuilder, 
     ActionRowBuilder, 
     StringSelectMenuBuilder
 } from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
+import { generateEmbed } from '../commons/embedGenerator';
+import { createErrorMessage } from '../commons/messages';
 
-export async function handleChangeInteraction(interaction: StringSelectMenuInteraction) {
+export const prefix = 'change';
+
+export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     const user = await interaction.client.users.fetch(userId);
+
+    if(user.id !== interaction.user.id) {
+        await interaction.reply(createErrorMessage(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -73,14 +81,13 @@ export async function handleChangeInteraction(interaction: StringSelectMenuInter
     await message.edit(display);
 
 
-    const rerollEmbed = new EmbedBuilder()
+    const rerollEmbed = generateEmbed(interaction)
         .setTitle(`${resultTitle[interaction.values[0] as StatKey]} ⇄`)
-        .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL() })
-
+        
     const components = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId(`change_selector:${interaction.values[0]}:${messageId}:${userId}`)
+                .setCustomId(`changeSelector:${interaction.values[0]}:${messageId}:${userId}`)
                 .setPlaceholder(`${interaction.values[0].toUpperCase()}:${statusData[interaction.values[0] as StatKey]}と入れ替えるステータス`)
                 .addOptions(
                     statOrder

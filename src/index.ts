@@ -1,6 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { DiscordAdapter } from './adapters/discord/DiscordAdapter';
-import { MessageUseCase } from './usecases/MessageUseCase';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -21,7 +20,6 @@ process.on('unhandledRejection', error => {
 });
 
 const discordAdapter = new DiscordAdapter(client);
-const messageUseCase = new MessageUseCase();
 
 client.once('ready', () => {
     console.log('JUPITER-SYSTEM.V.3.2 is ready.');
@@ -29,7 +27,7 @@ client.once('ready', () => {
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
-    await discordAdapter.handleMessage(message, messageUseCase);
+    await discordAdapter.handleMessage(message);
 });
 
 client.login(process.env.DISCORD_TOKEN);

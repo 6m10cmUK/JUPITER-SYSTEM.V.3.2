@@ -1,11 +1,12 @@
 import { 
     ButtonInteraction, 
-    EmbedBuilder, 
 } from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
+import { generateEmbed } from '../commons/embedGenerator';
+export const prefix = 'changeConfirm';
 
-export async function handleChangeConfirmInteraction(interaction: ButtonInteraction) {
+export async function execute(interaction: ButtonInteraction) {
     console.log(interaction.customId);
     const [_,beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
 
@@ -86,8 +87,7 @@ export async function handleChangeConfirmInteraction(interaction: ButtonInteract
     await message.edit(display);
 
 
-    const rerollEmbed = new EmbedBuilder()
+    const rerollEmbed = generateEmbed(interaction)
         .setTitle(`~~${resultTitle[afterStat as StatKey]} ⇄ ${resultTitle[beforeStat as StatKey]}~~`)
-        .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL() })
     await interaction.update({ embeds: [rerollEmbed], components: []});
 } 

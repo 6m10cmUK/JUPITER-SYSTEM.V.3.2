@@ -63,12 +63,12 @@ export const command: Command = {
 
         if (subcommand === 'random') {
             const count = interaction.options.getInteger('count') ?? 1;
-            const display = await createJobDisplay(query, subcommand, count);
+            const display = await createJobDisplay(interaction, query, subcommand, count);
             await interaction.editReply(display);
             return;
         }
 
-        const display = await createJobDisplay(query, subcommand, 1);
+        const display = await createJobDisplay(interaction, query, subcommand, 1);
         await interaction.editReply(display);
     }
 };

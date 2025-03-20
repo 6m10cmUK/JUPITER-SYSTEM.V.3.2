@@ -35,7 +35,6 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const DiscordAdapter_1 = require("./adapters/discord/DiscordAdapter");
-const MessageUseCase_1 = require("./usecases/MessageUseCase");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const client = new discord_js_1.Client({
@@ -52,13 +51,12 @@ process.on('unhandledRejection', error => {
     console.error('未処理のエラー:', error);
 });
 const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client);
-const messageUseCase = new MessageUseCase_1.MessageUseCase();
 client.once('ready', () => {
     console.log('JUPITER-SYSTEM.V.3.2 is ready.');
 });
 client.on('messageCreate', async (message) => {
     if (message.author.bot)
         return;
-    await discordAdapter.handleMessage(message, messageUseCase);
+    await discordAdapter.handleMessage(message);
 });
 client.login(process.env.DISCORD_TOKEN);

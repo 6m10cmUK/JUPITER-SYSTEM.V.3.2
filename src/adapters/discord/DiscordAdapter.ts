@@ -1,20 +1,17 @@
-import { Client, Message, EmbedBuilder } from 'discord.js';
-import { MessageUseCase } from '../../usecases/MessageUseCase';
+import { Client, Message } from 'discord.js';
 import { Command } from '../../interfaces/Command';
-import { handleRerollInteraction } from '../../interactions/rerollInteraction';
-import { handleConfirmRerollInteraction } from '../../interactions/confirmRerollInteraction';
-import { handleChangeInteraction } from '../../interactions/changeInteraction';
-import { handleChangeSelectorInteraction } from '../../interactions/changeSelectorInteraction';
-import { handleChangeConfirmInteraction } from '../../interactions/changeConfirmInteraction';
-
-import { handleJobInteraction } from '../../interactions/jobInteraction';
+import { InteractionHandler } from '../../interfaces/InteractionHandler';
 import { diceRoll } from '../../commands/classicCommands/diceRoll';
+import { createErrorMessage } from '../../commons/messages';
+
 import * as fs from 'fs';
 import * as path from 'path';
 
 export class DiscordAdapter {
     private prefix = '/#';
     private commands: Map<string, Command> = new Map();
+    private adminCommands: Map<string, (message: Message, guildId: string) => Promise<void>> = new Map();
+    private interactionHandlers: Map<string, InteractionHandler> = new Map();
 
     constructor(private client: Client) {
         this.init();
@@ -22,7 +19,28 @@ export class DiscordAdapter {
 
     private async init() {
         await this.loadCommands();
+        await this.loadAdminCommands();
+        await this.loadInteractionHandlers();
         this.setupInteractionHandler();
+    }
+
+    private async loadInteractionHandlers() {
+        const interactionsPath = path.join(process.cwd(), 'dist/interactions');
+        const files = fs.readdirSync(interactionsPath).filter(file => file.endsWith('.js'));
+
+        for (const file of files) {
+            try {
+                const filePath = path.join(interactionsPath, file);
+                const handler = await import(filePath);
+                if (handler.prefix && handler.execute) {
+                    this.interactionHandlers.set(handler.prefix, handler);
+                } else {
+                    console.warn(`${file}のインタラクションハンドラーの定義が不正だよ`);
+                }
+            } catch (error) {
+                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+            }
+        }
     }
 
     private async loadCommands() {
@@ -44,9 +62,26 @@ export class DiscordAdapter {
         }
     }
 
+    private async loadAdminCommands() {
+        const adminCommandsPath = path.join(process.cwd(), 'dist/adminCommands');
+        const commandFiles = fs.readdirSync(adminCommandsPath).filter(file => file.endsWith('.js'));
+
+        for (const file of commandFiles) {
+            try {
+                const filePath = path.join(adminCommandsPath, file);
+                const { execute } = await import(filePath);
+                const commandName = file.replace('.js', '');
+                this.adminCommands.set(commandName, execute);
+            } catch (error) {
+                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+            }
+        }
+    }
+
     private setupInteractionHandler() {
         this.client.on('interactionCreate', async interaction => {
             if (interaction.isChatInputCommand()) {
+                console.log(`execute: ${interaction.commandName}`);
                 const command = this.commands.get(interaction.commandName);
 
                 if (!command) {
@@ -58,45 +93,37 @@ export class DiscordAdapter {
                     await command.execute(interaction);
                 } catch (error) {
                     console.error(error);
-                    await interaction.reply({ 
-                        embeds: [
-                            new EmbedBuilder()
-                            .setTitle('COMMAND EXECUTE FAILED')
-                            .setDescription(error instanceof Error ? error.message : 'Unknown error')
-                            .setColor(0xff0000)
-                        ],
-                        ephemeral: true
-                    });
+                    await interaction.reply(
+                        createErrorMessage(
+                            interaction,
+                            `COMMAND EXECUTE FAILED`,
+                            error instanceof Error ? error.message : 'Unknown error'
+                        )
+                    );
                 }
-            } else if (interaction.isStringSelectMenu()) {
-                if (interaction.customId.startsWith('reroll:')) {
-                    await handleRerollInteraction(interaction);
-                }
-
-                if (interaction.customId.startsWith('change:')) {
-                    await handleChangeInteraction(interaction);
-                }
-
-                if (interaction.customId.startsWith('change_selector:')) {
-                    await handleChangeSelectorInteraction(interaction);
-                }
-            } else if (interaction.isButton()) {
-                if (interaction.customId.startsWith('confirmReroll:')) {
-                    await handleConfirmRerollInteraction(interaction);
-                }
-
-                if (interaction.customId.startsWith('job_')) {
-                    await handleJobInteraction(interaction);
-                }
-                if (interaction.customId.startsWith('change_confirm:')) {
-                    await handleChangeConfirmInteraction(interaction);
+            } else if (interaction.isStringSelectMenu() || interaction.isButton()) {
+                const [prefix] = interaction.customId.split(':');
+                const handler = this.interactionHandlers.get(prefix);
+                
+                if (handler) {
+                    try {
+                        await handler.execute(interaction);
+                    } catch (error) {
+                        console.error(error);
+                        await interaction.reply(
+                            createErrorMessage(
+                                interaction,
+                                `INTERACTION FAILED`,
+                                error instanceof Error ? error.message : 'Unknown error'
+                            )
+                        );
+                    }
                 }
             }
         });
     }
 
-    async handleMessage(message: Message, useCase: MessageUseCase) {
-
+    async handleMessage(message: Message) {
         await diceRoll(message);
 
         if (!message.content.startsWith(this.prefix)) return;
@@ -105,18 +132,22 @@ export class DiscordAdapter {
         const args = commandBody.split(/\s+/);
         const command = args.shift()?.toLowerCase();
         const guildId = message.guild?.id;
-        if (!guildId) return;
+        if (!guildId || !command) return;
 
-        if (command === 'setup') {
-            await useCase.executeSetup(message, guildId);
-        }
-
-        if (command === 'update') {
-            await useCase.executeUpdate(message, guildId);
-        }
-
-        if (command === 'add') {
-            await useCase.executeAdd(message, guildId);
+        const adminCommand = this.adminCommands.get(command);
+        if (adminCommand) {
+            // 管理者権限を持っているか確認
+            if (!message.member?.permissions.has('Administrator') && message.guild?.ownerId !== message.author.id) {
+                await message.reply(
+                    createErrorMessage(
+                        message,
+                        `PERMISSION DENIED`,
+                        'This command can only be used by administrators'
+                    )
+                );
+                return;
+            }
+            await adminCommand(message, guildId);
         }
     }
 } 

@@ -1,11 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleConfirmRerollInteraction = handleConfirmRerollInteraction;
-const discord_js_1 = require("discord.js");
+exports.prefix = void 0;
+exports.execute = execute;
 const createStatusDisplay_1 = require("../commons/createStatusDisplay");
 const statusData_1 = require("../types/statusData");
-async function handleConfirmRerollInteraction(interaction) {
-    const [_, statType, rerollResult, details, messageId, rerollCount] = interaction.customId.split(':');
+const embedGenerator_1 = require("../commons/embedGenerator");
+const messages_1 = require("../commons/messages");
+exports.prefix = 'confirmReroll';
+async function execute(interaction) {
+    const [_, statType, rerollResult, details, messageId, rerollCount, userId] = interaction.customId.split(':');
+    const user = await interaction.client.users.fetch(userId);
+    if (user.id !== interaction.user.id) {
+        await interaction.reply((0, messages_1.createErrorMessage)(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
     // 元のメッセージを取得
     const originalMessage = await interaction.channel?.messages.fetch(messageId);
     if (!originalMessage) {
@@ -53,12 +61,10 @@ async function handleConfirmRerollInteraction(interaction) {
     history += `${statType.toUpperCase()}: ${oldValue} → ${rerollResult} ${details}`;
     const display = await (0, createStatusDisplay_1.createStatusDisplay)(interaction, statusData, messageId, Number(rerollCount), history, name, ver);
     await originalMessage.edit(display);
+    const rerollEmbed = (0, embedGenerator_1.generateEmbed)(interaction)
+        .setTitle(`~~${interaction.message.embeds[0].title}~~`);
     interaction.update({
-        embeds: [
-            new discord_js_1.EmbedBuilder()
-                .setTitle(`~~${interaction.message.embeds[0].title}~~`)
-                .setAuthor(interaction.message.embeds[0].author)
-        ],
+        embeds: [rerollEmbed],
         components: []
     });
 }

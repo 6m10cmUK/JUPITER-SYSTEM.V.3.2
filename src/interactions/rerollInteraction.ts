@@ -1,11 +1,20 @@
-import { StringSelectMenuInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { StringSelectMenuInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { StatusData, StatKey, statOrder } from '../types/statusData';
 import { createStatusDisplay } from '../commons/createStatusDisplay';
 import { rollIndividualStatus } from '../commons/rollAllStats';
-export async function handleRerollInteraction(interaction: StringSelectMenuInteraction) {
+import { generateEmbed } from '../commons/embedGenerator';
+import { createErrorMessage } from '../commons/messages';
+
+export const prefix = 'reroll';
+
+export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     const user = await interaction.client.users.fetch(userId);
+    if(user.id !== interaction.user.id) {
+        await interaction.reply(createErrorMessage(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -52,10 +61,9 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
     fields.forEach(field => {
         const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
         if (match) {
-            rerollCount = parseInt(match[1], 10); // 数字を取得
+            rerollCount = parseInt(match[1], 10);
         }
     });
-
 
     rerollCount++;
 
@@ -73,14 +81,13 @@ export async function handleRerollInteraction(interaction: StringSelectMenuInter
 
     const rerollResult = rollIndividualStatus(interaction.values[0] as StatKey);
 
-    const rerollEmbed = new EmbedBuilder()
+    const rerollEmbed = generateEmbed(interaction)
         .setTitle(`${resultTitle[interaction.values[0] as StatKey]} ＞＞＞ ${rerollResult.result} (${rerollResult.details})`)
-        .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL() })
-
+    
     const components = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
-                .setCustomId(`confirmReroll:${interaction.values[0]}:${rerollResult.result}:${rerollResult.details}:${messageId}:${rerollCount}`)
+                .setCustomId(`confirmReroll:${interaction.values[0]}:${rerollResult.result}:${rerollResult.details}:${messageId}:${rerollCount}:${userId}`)
                 .setLabel('確定')
                 .setStyle(ButtonStyle.Primary)
         );

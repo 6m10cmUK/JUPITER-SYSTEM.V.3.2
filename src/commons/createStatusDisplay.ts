@@ -72,7 +72,7 @@ async function createStatusEmbed(
     return embed;
 }
 
-function createStatusComponents(stats: Partial<StatusData>, messageId?: string, userId?: string, ver?: string) {
+function createStatusComponents(stats: Partial<StatusData>, messageId: string, userId: string, ver: string) {
     const rerollSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
             new StringSelectMenuBuilder()

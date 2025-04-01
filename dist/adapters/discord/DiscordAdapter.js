@@ -109,10 +109,11 @@ class DiscordAdapter {
     setupInteractionHandler() {
         this.client.on('interactionCreate', async (interaction) => {
             if (interaction.isChatInputCommand()) {
-                console.log(`execute: ${interaction.commandName}`);
+                console.log(`${interaction.guild?.id} ${interaction.user.globalName} ${interaction.commandName}`);
                 const command = this.commands.get(interaction.commandName);
                 if (!command) {
-                    console.error(`${interaction.commandName}というコマンドが見つからないよ`);
+                    console.error(`${interaction.commandName} is not found`);
+                    await interaction.reply((0, messages_1.createErrorMessage)(interaction, `COMMAND EXECUTE FAILED`, 'Command is not found'));
                     return;
                 }
                 try {

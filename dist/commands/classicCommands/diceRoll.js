@@ -9,10 +9,10 @@ const dice_1 = require("../../commons/dice");
 const embedGenerator_1 = require("../../commons/embedGenerator");
 const fullWidthChars = /[Ａ-Ｚａ-ｚ０-９＋－＊／＜＝（）]/g;
 async function diceRoll(message) {
-    if (message.content.includes('\n')) {
+    const content = message.content;
+    if (content.includes('\n')) {
         return;
     }
-    const content = message.content;
     let contents = content.split(/[\s\u3000]/);
     let target = contents[0].replace(fullWidthChars, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).toLowerCase();
     let repeat = 1;
@@ -38,6 +38,7 @@ async function diceRoll(message) {
     const embed = (0, embedGenerator_1.generateEmbed)(message)
         .addFields({ name: content, value: resultTexts.join('\n') })
         .setColor(color);
+    console.log(`${message.guild?.id} ${message.author.globalName} ${content} ${resultTexts.join(' ')}`);
     await message.reply({ embeds: [embed] });
 }
 async function roll(target, content) {
@@ -45,7 +46,7 @@ async function roll(target, content) {
         return await ccb(target);
     }
     if (target.toLowerCase().startsWith('choice(')) {
-        const result = await choice(content.replace(fullWidthChars, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).toLowerCase());
+        const result = await choice(content.replace(fullWidthChars, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)));
         return result;
     }
     if (target.toLowerCase().startsWith('res(')) {
@@ -127,7 +128,6 @@ async function ccb(target) {
     return [resultText, color];
 }
 async function choice(content) {
-    console.log(content);
     const choices = content.split('(')[1].split(')')[0].split(/[\s,]+/);
     const result = (0, dice_1.rollDice)(1, choices.length);
     const total = result.reduce((sum, val) => sum + val, 0);
@@ -138,6 +138,6 @@ async function res(target) {
     if (left == undefined || right == undefined) {
         return null;
     }
-    const result = await ccb(`ccb<=${(parseInt(left) - parseInt(right)) * 5 + 50}`);
+    const result = await ccb(`1d100<=${(parseInt(left) - parseInt(right)) * 5 + 50}`);
     return result;
 }

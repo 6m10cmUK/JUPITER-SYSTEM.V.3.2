@@ -36,7 +36,7 @@ async function execute(interaction) {
         return;
     }
     const fields = embed.data.fields;
-    const name = embed.data.title?.split('NAME: ')[1] ?? 'キャラクター名';
+    const name = embed.data.description?.split('NAME: ')[1] ?? 'キャラクター名';
     const ver = embed.data.footer?.text ?? '6';
     const statusData = {
         details: {}

@@ -66,6 +66,7 @@ async function execute(message, guildId) {
     }
     if (message.content.split(' ')[1] === '-pro' || message.content.split(' ')[1] === '-p') {
         commandNames = [
+            "ccfolia-log",
             "choice",
             "feature",
             "job",
@@ -78,6 +79,7 @@ async function execute(message, guildId) {
     }
     if (message.content.split(' ')[1] === '-standard' || message.content.split(' ')[1] === '-s') {
         commandNames = [
+            "ccfolia-log",
             "choice",
             "feature",
             "job",

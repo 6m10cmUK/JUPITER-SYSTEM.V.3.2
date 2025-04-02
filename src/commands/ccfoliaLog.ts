@@ -36,19 +36,21 @@ export const command: Command = {
             const result: { name: string, color: string, critical: string[], special: string[], fumble: string[] }[] = [];
             while ((match = regex.exec(htmlContent)) !== null) {
 
-                const [, color, channel, name, message] = match;
+                let [, color, channel, name, message] = match;
                 if (!result.find(item => item.name === name)) {
                     result.push({ name, color, critical: [], special: [], fumble: [] });
                 }
+                message = message.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                message = message.replace(/\*/g, '\\*');
                 if(message.includes('＞ 決定的成功')) {
                     result[result.findIndex(item => item.name === name)]
-                        .critical.push(`${channel}: ${message.replace(/&lt;/g, '<').replace(/&gt;/g, '>')}`);
+                        .critical.push(`[${channel}]: ${message}`);
                 } else if(message.includes('＞ スペシャル')) {
                     result[result.findIndex(item => item.name === name)]
-                        .special.push(`${channel}: ${message.replace(/&lt;/g, '<').replace(/&gt;/g, '>')}`);
+                        .special.push(`[${channel}]: ${message}`);
                 } else if(message.includes('＞ 致命的失敗')) {
                     result[result.findIndex(item => item.name === name)]
-                        .fumble.push(`${channel}: ${message.replace(/&lt;/g, '<').replace(/&gt;/g, '>')}`);
+                        .fumble.push(`[${channel}]: ${message}`);
                 }
             }
 

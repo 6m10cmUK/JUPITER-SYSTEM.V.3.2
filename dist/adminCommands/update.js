@@ -35,11 +35,11 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.execute = execute;
 const discord_js_1 = require("discord.js");
+const messages_1 = require("../commons/messages");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const messages_1 = require("../commons/messages");
 async function execute(message, guildId) {
     const commands = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
@@ -50,23 +50,12 @@ async function execute(message, guildId) {
         commands.push(command.data.toJSON());
     }
     const rest = new discord_js_1.REST().setToken(process.env.DISCORD_TOKEN);
-    let registeredCommandNames = [];
     try {
-        // 現在登録されているコマンドを取得
         const registeredCommands = await rest.get(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId));
-        const commandList = registeredCommands;
-        registeredCommandNames = commandList.map((command) => command.name);
-    }
-    catch (error) {
-        console.error('エラー:', error);
-        const embed = (0, messages_1.createErrorMessage)(message, `UPDATE FAILED`, error instanceof Error ? error.message : String(error));
-        await message.reply(embed);
-        return;
-    }
-    const commandsToRegister = commands.filter(command => !registeredCommandNames.includes(command.name));
-    try {
+        const commandNames = registeredCommands.map((command) => command.name);
+        const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
         await rest.put(discord_js_1.Routes.applicationGuildCommands(process.env.APPLICATION_ID, guildId), { body: commandsToRegister });
-        const embed = (0, messages_1.createSuccessMessage)(message, `UPDATE COMPLETE`, registeredCommandNames.join(', '));
+        const embed = (0, messages_1.createSuccessMessage)(message, `UPDATE COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
         await message.reply(embed);
     }
     catch (error) {

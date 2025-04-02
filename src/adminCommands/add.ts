@@ -1,12 +1,14 @@
 import { Message, REST, Routes } from 'discord.js';
+import { APIApplicationCommand } from 'discord-api-types/v9';
+import { createErrorMessage, createSuccessMessage } from '../commons/messages';
+
 import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
-import { createErrorMessage, createSuccessMessage } from '../commons/messages';
 
 export async function execute(message: Message, guildId: string) {
-    const commands = [];
+    const commands: APIApplicationCommand[] = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
@@ -16,46 +18,43 @@ export async function execute(message: Message, guildId: string) {
         commands.push(command.data.toJSON());
     }
 
-    const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
+    const addedCommand = message.content.split(' ')[1];
 
-    let registeredCommandNames: string[] = [];
-    try {
-        // 現在登録されているコマンドを取得
-        const registeredCommands = await rest.get(
-            Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId)
-        );
-        const commandList = registeredCommands as any[];
-        registeredCommandNames = commandList.map((command) => command.name);
-
-    } catch (error) {
-        console.error('エラー:', error);
-        const embed = createErrorMessage(message, `ADD COMMANDS FAILED`, error instanceof Error ? error.message : String(error));
+    if (!addedCommand) {
+        const embed = createErrorMessage(message, `ADDED FAILED`, 'command not found');
         await message.reply(embed);
         return;
     }
 
-    let addCommandNames = message.content.split(' ').slice(1);
-    if (addCommandNames.length === 0) {
-        return;
-    }
-    registeredCommandNames = [...registeredCommandNames, ...addCommandNames];
-
-    const commandsToRegister = commands.filter(command => !registeredCommandNames.includes(command.name));
+    const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 
     try {
+        const registeredCommands = await rest.get(
+            Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId)
+        ) as APIApplicationCommand[];
+
+        const commandNames = registeredCommands.map((command) => command.name);
+        commandNames.push(addedCommand);
+
+        if (commands.filter(command => command.name == addedCommand).length == 0) {
+            const embed = createErrorMessage(message, `ADDED FAILED`, 'command not found');
+            await message.reply(embed);
+            return;
+        }
+
+        const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
+
         await rest.put(
             Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId),
             { body: commandsToRegister }
         );
 
-        const embed = createSuccessMessage(message, `ADD COMMANDS COMPLETE`, registeredCommandNames.join(' '));
+        const embed = createSuccessMessage(message, `ADDED COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
         await message.reply(embed);
     } catch (error) {
         console.error('エラー:', error);
-        const embed = createErrorMessage(message, `ADD COMMANDS FAILED`, error instanceof Error ? error.message : String(error));
+        const embed = createErrorMessage(message, `ADDED FAILED`, error instanceof Error ? error.message : String(error));
         await message.reply(embed);
     }
 }
-
-
 

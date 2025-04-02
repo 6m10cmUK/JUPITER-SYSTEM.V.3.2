@@ -1,12 +1,14 @@
 import { Message, REST, Routes } from 'discord.js';
+import { APIApplicationCommand } from 'discord-api-types/v9';
+import { createErrorMessage, createSuccessMessage } from '../commons/messages';
+
 import * as dotenv from 'dotenv';
 dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
-import { createSuccessMessage, createErrorMessage } from '../commons/messages';
 
 export async function execute(message: Message, guildId: string) {
-    const commands = [];
+    const commands: APIApplicationCommand[] = [];
     const commandsPath = path.join(process.cwd(), 'src/commands');
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
@@ -18,31 +20,21 @@ export async function execute(message: Message, guildId: string) {
 
     const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 
-    let registeredCommandNames: string[] = [];
     try {
-        // 現在登録されているコマンドを取得
         const registeredCommands = await rest.get(
             Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId)
-        );
-        const commandList = registeredCommands as any[];
-        registeredCommandNames = commandList.map((command) => command.name);
+        ) as APIApplicationCommand[];
 
-    } catch (error) {
-        console.error('エラー:', error);
-        const embed = createErrorMessage(message, `UPDATE FAILED`, error instanceof Error ? error.message : String(error));
-        await message.reply(embed);
-        return;
-    }
+        const commandNames = registeredCommands.map((command) => command.name);
 
-    const commandsToRegister = commands.filter(command => !registeredCommandNames.includes(command.name));
+        const commandsToRegister = commands.filter(command => commandNames.includes(command.name));
 
-    try {
         await rest.put(
             Routes.applicationGuildCommands(process.env.APPLICATION_ID!, guildId),
             { body: commandsToRegister }
         );
 
-        const embed = createSuccessMessage(message, `UPDATE COMPLETE`, registeredCommandNames.join(', '));
+        const embed = createSuccessMessage(message, `UPDATE COMPLETE`, commandsToRegister.map(command => command.name).join(' '));
         await message.reply(embed);
     } catch (error) {
         console.error('エラー:', error);
@@ -50,6 +42,4 @@ export async function execute(message: Message, guildId: string) {
         await message.reply(embed);
     }
 }
-
-
 

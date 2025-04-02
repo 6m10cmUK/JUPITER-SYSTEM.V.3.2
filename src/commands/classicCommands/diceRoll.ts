@@ -114,6 +114,8 @@ export async function roll(target: string, content: string){
 
     // 四則演算の評価
     try {
+        // '^' を '**' (べき乗) に置換
+        expression = expression.replace(/\^/g, '**');
         totalResult = eval(expression);
         if (isNaN(totalResult)) {
             return null;

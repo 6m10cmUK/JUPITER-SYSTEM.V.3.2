@@ -113,7 +113,21 @@ function createStatusComponents(stats: Partial<StatusData>, messageId: string, u
                 )
         );
 
-    return [rerollSelectRow, buttonRow, ChangeSelectRow];
+        const CustomSetRow = new ActionRowBuilder<StringSelectMenuBuilder>()
+        .addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId(`customSet:${messageId}:${userId}`)
+                .setPlaceholder('カスタムセット')
+                .addOptions(
+                    statOrder.map(stat => ({
+                        label: `${statOrder.indexOf(stat) + 1}️⃣ ${stat.toUpperCase()}`,
+                        value: stat,
+                        description: `${stats[stat] ?? 0} ${stats.details?.[stat] || ''}`
+                    }))
+                )
+        );
+
+    return [rerollSelectRow, ChangeSelectRow, buttonRow, CustomSetRow];
 }
 
 function calculateDamageBonus(siz: number, str: number): string {

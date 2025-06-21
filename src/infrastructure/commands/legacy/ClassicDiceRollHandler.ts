@@ -20,6 +20,12 @@ export class ClassicDiceRollHandler {
             return;
         }
 
+        // ダイス表記（ndm形式）が含まれているかチェック
+        const dicePattern = /\d+d\d+/i;
+        if (!dicePattern.test(content)) {
+            return;
+        }
+
         try {
             const response = await this.rollDiceUseCase.execute({
                 expression: content,

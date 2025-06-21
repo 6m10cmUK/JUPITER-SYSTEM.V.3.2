@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const DiscordAdapter_1 = require("./adapters/discord/DiscordAdapter");
 const dotenv = __importStar(require("dotenv"));
+const packageJson = __importStar(require("../package.json"));
 dotenv.config();
 const client = new discord_js_1.Client({
     intents: [
@@ -53,6 +54,14 @@ process.on('unhandledRejection', error => {
 const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client);
 client.once('ready', () => {
     console.log('JUPITER-SYSTEM.V.3.2 is ready.');
+    // ボットのステータスを設定
+    client.user?.setPresence({
+        activities: [{
+                name: `ver.${packageJson.version} `,
+                type: discord_js_1.ActivityType.Playing
+            }],
+        status: 'online'
+    });
 });
 client.on('messageCreate', async (message) => {
     if (message.author.bot)

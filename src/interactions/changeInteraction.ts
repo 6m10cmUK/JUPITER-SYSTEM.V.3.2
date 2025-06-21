@@ -3,20 +3,21 @@ import {
     ActionRowBuilder, 
     StringSelectMenuBuilder
 } from 'discord.js';
-import { StatusData, StatKey, statOrder } from '../types/statusData';
-import { createStatusDisplay } from '../commons/createStatusDisplay';
-import { generateEmbed } from '../commons/embedGenerator';
-import { createErrorMessage } from '../commons/messages';
+import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
+import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
+import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
+import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
 
 export const prefix = 'change';
 
 export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
+    // 権限チェック
     const user = await interaction.client.users.fetch(userId);
-
-    if(user.id !== interaction.user.id) {
-        await interaction.reply(createErrorMessage(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
+    if (user.id !== interaction.user.id) {
+        await interaction.reply(createErrorMessage(interaction, `CHANGE FAILED`, 'This command can only be used on your own character.'));
         return;
     }
 
@@ -27,6 +28,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
         return;
     }
 
+    // メッセージとEmbedの取得
     const message = await interaction.channel.messages.fetch(messageId);
     if (!message) {
         await errorMessage('メッセージが見つかりませんでした');
@@ -34,71 +36,62 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     }
 
     const embed = message.embeds[0];
-    if (!embed || !embed.data?.fields?.[0]) {
-        await errorMessage('embedまたはフィールドデータが見つかりませんでした');
+    if (!embed) {
+        await errorMessage('embedデータが見つかりませんでした');
         return;
     }
 
-    const fields = embed.data.fields;
+    // EmbedからStatusResultDtoを復元
+    const parser = new StatusEmbedParser();
+    const statusData = parser.parse(embed);
+    
+    if (!statusData) {
+        await errorMessage('ステータスデータの解析に失敗しました');
+        return;
+    }
 
-    const statusData: Partial<StatusData> & { details: { [key: string]: string } } = {
-        details: {}
-    };
+    // messageIdとuserIdを設定
+    statusData.messageId = messageId;
+    statusData.userId = userId;
 
-    let resultTitle: { [key in StatKey]?: string } = {};
+    // 選択されたステータスの情報を取得
+    const selectedStat = interaction.values[0].toUpperCase(); // 大文字に変換
+    const selectedValue = statusData.primaryStats[selectedStat];
+    const selectedDetails = statusData.primaryStatsDetails[selectedStat];
 
-    statOrder.forEach((stat, index) => {
-        const field = fields[index];
-        if (field) {
-            const statValue = parseInt(field.name.match(/\d+$/)?.[0] || '0', 10);
-            statusData[stat as StatKey] = statValue;
-            statusData.details[stat] = field.value;
-            resultTitle[stat] = field.name;
-        }
-    });
-    let rerollCount = 0;
+    // ステータス表示を更新（振り直し回数は増やさない）
+    const formatter = new StatusEmbedFormatter();
+    const updatedEmbed = await formatter.format(statusData, interaction);
+    const components = StatusComponentBuilder.createComponents(statusData, messageId, userId);
+    
+    await message.edit({ embeds: [updatedEmbed], components });
 
-        fields.forEach(field => {
-        const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
-        if (match) {
-            rerollCount = parseInt(match[1], 10); // 数字を取得
-        }
-    });
-
-    const name = embed.data.description?.split('NAME: ')[1] ?? 'キャラクター名';
-    const ver = embed.data.footer?.text ?? '6';
-
-    const display = await createStatusDisplay(
-        interaction,
-        statusData as StatusData,
-        messageId,
-        rerollCount,
-        fields.find(field => field.name === "変更履歴")?.value ?? '',
-        name,
-        ver
-    );
-
-    await message.edit(display);
-
+    // 入れ替え先選択メニューを表示
+    const statOrder = statusData.version === '6' 
+        ? ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU']
+        : ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC'];
 
     const rerollEmbed = generateEmbed(interaction)
-        .setTitle(`${resultTitle[interaction.values[0] as StatKey]} ⇄`)
+        .setTitle(`${selectedStat}: ${selectedValue} ⇄`);
         
-    const components = new ActionRowBuilder<StringSelectMenuBuilder>()
+    const selectMenu = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId(`changeSelector:${interaction.values[0]}:${messageId}:${userId}`)
-                .setPlaceholder(`${interaction.values[0].toUpperCase()}:${statusData[interaction.values[0] as StatKey]}と入れ替えるステータス`)
+                .setCustomId(`changeSelector:${selectedStat}:${messageId}:${userId}`)
+                .setPlaceholder(`${selectedStat}:${selectedValue}と入れ替えるステータス`)
                 .addOptions(
                     statOrder
-                    .filter(stat => stat !== interaction.values[0])
-                    .map(stat => ({
-                        label: `${statOrder.indexOf(stat) + 1}️⃣ ${stat.toUpperCase()}`,
-                        value: stat,
-                        description: `${statusData[stat as StatKey]} ${statusData.details[stat as StatKey]}`,
-                    }))
+                        .filter(stat => stat !== selectedStat)
+                        .map((stat, index) => {
+                            const statIndex = statOrder.indexOf(stat);
+                            return {
+                                label: `${statIndex + 1}️⃣ ${stat}`,
+                                value: stat,
+                                description: `${statusData.primaryStats[stat]} ${statusData.primaryStatsDetails[stat]}`
+                            };
+                        })
                 )
         );
 
-    await interaction.reply({ embeds: [rerollEmbed], components: [components]});
-} 
+    await interaction.reply({ embeds: [rerollEmbed], components: [selectMenu] });
+}

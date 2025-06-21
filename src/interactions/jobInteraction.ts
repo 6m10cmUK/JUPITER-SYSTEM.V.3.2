@@ -1,5 +1,5 @@
 import { ButtonInteraction } from 'discord.js';
-import { createJobDisplay } from '../commons/createJobDisplay';
+import { createJobDisplay } from '../presentation/discord/displays/createJobDisplay';
 
 export const prefix = 'job';
 

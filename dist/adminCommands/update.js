@@ -35,18 +35,18 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.execute = execute;
 const discord_js_1 = require("discord.js");
-const messages_1 = require("../commons/messages");
+const messages_1 = require("../presentation/discord/builders/messages");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 async function execute(message, guildId) {
     const commands = [];
-    const commandsPath = path.join(process.cwd(), 'src/commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
+    const commandsPath = path.join(process.cwd(), 'src/infrastructure/commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('-command.ts'));
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
     for (const file of filteredCommandFiles) {
-        const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
+        const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
         commands.push(command.data.toJSON());
     }
     const rest = new discord_js_1.REST().setToken(process.env.DISCORD_TOKEN);

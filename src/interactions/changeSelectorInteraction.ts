@@ -4,16 +4,21 @@ import {
     ButtonBuilder,
     ButtonStyle
 } from 'discord.js';
-import { StatusData, StatKey, statOrder } from '../types/statusData';
-import { generateEmbed } from '../commons/embedGenerator';
+import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
+import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 
 export const prefix = 'changeSelector';
 
 export async function execute(interaction: StringSelectMenuInteraction) {
-
     const [_, stat, messageId, userId] = interaction.customId.split(':');
 
+    // 権限チェック
     const user = await interaction.client.users.fetch(userId);
+    if (user.id !== interaction.user.id) {
+        await interaction.reply(createErrorMessage(interaction, `CHANGE FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -22,6 +27,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
         return;
     }
 
+    // メッセージとEmbedの取得
     const message = await interaction.channel.messages.fetch(messageId);
     if (!message) {
         await errorMessage('メッセージが見つかりませんでした');
@@ -29,40 +35,37 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     }
 
     const embed = message.embeds[0];
-    if (!embed || !embed.data?.fields?.[0]) {
-        await errorMessage('embedまたはフィールドデータが見つかりませんでした');
+    if (!embed) {
+        await errorMessage('embedデータが見つかりませんでした');
         return;
     }
 
-    const fields = embed.data.fields;
+    // EmbedからStatusResultDtoを復元
+    const parser = new StatusEmbedParser();
+    const statusData = parser.parse(embed);
+    
+    if (!statusData) {
+        await errorMessage('ステータスデータの解析に失敗しました');
+        return;
+    }
 
-    const statusData: Partial<StatusData> & { details: { [key: string]: string } } = {
-        details: {}
-    };
+    // 大文字に変換
+    const beforeStat = stat.toUpperCase();
+    const afterStat = interaction.values[0].toUpperCase();
 
-    let resultTitle: { [key in StatKey]?: string } = {};
-
-    statOrder.forEach((stat, index) => {
-        const field = fields[index];
-        if (field) {
-            const statValue = parseInt(field.name.match(/\d+$/)?.[0] || '0', 10);
-            statusData[stat as StatKey] = statValue;
-            statusData.details[stat] = field.value;
-            resultTitle[stat] = field.name;
-        }
-    });
-
-
+    const beforeValue = statusData.primaryStats[beforeStat];
+    const afterValue = statusData.primaryStats[afterStat];
 
     const newEmbed = generateEmbed(interaction)
-        .setTitle(`${resultTitle[stat as StatKey]} ⇄ ${resultTitle[interaction.values[0] as StatKey]}`)
+        .setTitle(`${beforeStat}: ${beforeValue} ⇄ ${afterStat}: ${afterValue}`);
 
     const newComponents = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
-            .setCustomId(`changeConfirm:${interaction.values[0]}:${stat}:${messageId}:${userId}`)
-            .setLabel('確定')
-            .setStyle(ButtonStyle.Success)
+                .setCustomId(`changeConfirm:${stat}:${interaction.values[0]}:${messageId}:${userId}`)
+                .setLabel('確定')
+                .setStyle(ButtonStyle.Success)
         );
+        
     await interaction.update({ embeds: [newEmbed], components: [newComponents] });
-} 
+}

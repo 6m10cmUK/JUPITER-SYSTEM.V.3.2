@@ -1,16 +1,23 @@
-import { 
-    ButtonInteraction, 
-} from 'discord.js';
-import { StatusData, StatKey, statOrder } from '../types/statusData';
-import { createStatusDisplay } from '../commons/createStatusDisplay';
-import { generateEmbed } from '../commons/embedGenerator';
+import { ButtonInteraction } from 'discord.js';
+import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
+import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
+import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
+import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
+import { StatusServiceFactory } from '../domain/services/status/StatusServiceFactory';
+
 export const prefix = 'changeConfirm';
 
 export async function execute(interaction: ButtonInteraction) {
     console.log(interaction.customId);
-    const [_,beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
+    const [_, beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
 
+    // 権限チェック
     const user = await interaction.client.users.fetch(userId);
+    if (user.id !== interaction.user.id) {
+        await interaction.reply(createErrorMessage(interaction, `CHANGE FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -19,6 +26,7 @@ export async function execute(interaction: ButtonInteraction) {
         return;
     }
 
+    // メッセージとEmbedの取得
     const message = await interaction.channel.messages.fetch(messageId);
     if (!message) {
         await errorMessage('メッセージが見つかりませんでした');
@@ -26,68 +34,58 @@ export async function execute(interaction: ButtonInteraction) {
     }
 
     const embed = message.embeds[0];
-    if (!embed || !embed.data?.fields?.[0]) {
-        await errorMessage('embedまたはフィールドデータが見つかりませんでした');
+    if (!embed) {
+        await errorMessage('embedデータが見つかりませんでした');
         return;
     }
 
-    const fields = embed.data.fields;
-
-    const statusData: Partial<StatusData> & { details: { [key: string]: string } } = {
-        details: {}
-    };
-
-    let resultTitle: { [key in StatKey]?: string } = {};
-
-    statOrder.forEach((stat, index) => {
-        const field = fields[index];
-        if (field) {
-            const statValue = parseInt(field.name.match(/\d+$/)?.[0] || '0', 10);
-            statusData[stat as StatKey] = statValue;
-            statusData.details[stat] = field.value;
-            resultTitle[stat] = field.name;
-        }
-    });
-    let rerollCount = 0;
-
-        fields.forEach(field => {
-        const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
-        if (match) {
-            rerollCount = parseInt(match[1], 10); // 数字を取得
-        }
-    });
-
-    const name = embed.data.description?.split('NAME: ')[1] ?? 'キャラクター名';
-    const ver = embed.data.footer?.text ?? '6';
+    // EmbedからStatusResultDtoを復元
+    const parser = new StatusEmbedParser();
+    const statusData = parser.parse(embed);
     
-    const buf = statusData[beforeStat as StatKey]
-    statusData[beforeStat as StatKey] = statusData[afterStat as StatKey]
-    statusData[afterStat as StatKey] = buf
-
-    const detailBuf = statusData.details[beforeStat as StatKey]
-    statusData.details[beforeStat as StatKey] = statusData.details[afterStat as StatKey]
-    statusData.details[afterStat as StatKey] = detailBuf
-
-    var history = fields.find(field => field.name === "変更履歴")?.value ?? '';
-    if (history.length > 0) {
-        history += "\n";
+    if (!statusData) {
+        await errorMessage('ステータスデータの解析に失敗しました');
+        return;
     }
-    history += `${beforeStat.toUpperCase()}: ${statusData[beforeStat as StatKey]} ⇄ ${afterStat.toUpperCase()}: ${statusData[afterStat as StatKey]}`;
 
-    const display = await createStatusDisplay(
-        interaction,
-        statusData as StatusData,
-        messageId,
-        rerollCount,
-        history,
-        name,
-        ver
-    );
+    // messageIdとuserIdを設定
+    statusData.messageId = messageId;
+    statusData.userId = userId;
 
-    await message.edit(display);
+    // ステータスを入れ替え（大文字に変換）
+    const beforeStatUpper = beforeStat.toUpperCase();
+    const afterStatUpper = afterStat.toUpperCase();
 
+    // 値を入れ替え
+    const tempValue = statusData.primaryStats[beforeStatUpper];
+    const tempDetails = statusData.primaryStatsDetails[beforeStatUpper];
+    
+    statusData.primaryStats[beforeStatUpper] = statusData.primaryStats[afterStatUpper];
+    statusData.primaryStatsDetails[beforeStatUpper] = statusData.primaryStatsDetails[afterStatUpper];
+    
+    statusData.primaryStats[afterStatUpper] = tempValue;
+    statusData.primaryStatsDetails[afterStatUpper] = tempDetails;
 
+    // 履歴を更新
+    if (statusData.history && statusData.history.length > 0) {
+        statusData.history += "\n";
+    }
+    statusData.history += `${beforeStatUpper}: ${statusData.primaryStats[beforeStatUpper]} ⇄ ${afterStatUpper}: ${statusData.primaryStats[afterStatUpper]}`;
+
+    // 二次ステータスを再計算
+    const statusService = StatusServiceFactory.create(statusData.version);
+    statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats);
+
+    // ステータス表示を更新
+    const formatter = new StatusEmbedFormatter();
+    const updatedEmbed = await formatter.format(statusData, interaction);
+    const components = StatusComponentBuilder.createComponents(statusData, messageId, userId);
+
+    await message.edit({ embeds: [updatedEmbed], components });
+
+    // 入れ替え確定のメッセージを更新
     const rerollEmbed = generateEmbed(interaction)
-        .setTitle(`~~${resultTitle[afterStat as StatKey]} ⇄ ${resultTitle[beforeStat as StatKey]}~~`)
-    await interaction.update({ embeds: [rerollEmbed], components: []});
-} 
+        .setTitle(`~~${beforeStatUpper} ⇄ ${afterStatUpper}~~`);
+    
+    await interaction.update({ embeds: [rerollEmbed], components: [] });
+}

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.command = void 0;
 const discord_js_1 = require("discord.js");
-const createJobDisplay_1 = require("../commons/createJobDisplay");
+const createJobDisplay_1 = require("../presentation/discord/displays/createJobDisplay");
 exports.command = {
     data: new discord_js_1.SlashCommandBuilder()
         .setName('job')

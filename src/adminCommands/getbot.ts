@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { createInfoMessage } from '../commons/messages';
+import { createInfoMessage } from '../presentation/discord/builders/messages';
 import { BOT_INVITE_URL } from '../config/discord_config';
 
 export async function execute(message: Message, guildId: string) {

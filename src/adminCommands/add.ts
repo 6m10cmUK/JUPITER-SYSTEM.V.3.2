@@ -1,6 +1,6 @@
 import { Message, REST, Routes } from 'discord.js';
 import { APIApplicationCommand } from 'discord-api-types/v9';
-import { createErrorMessage, createSuccessMessage } from '../commons/messages';
+import { createErrorMessage, createSuccessMessage } from '../presentation/discord/builders/messages';
 
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -9,12 +9,12 @@ import * as path from 'path';
 
 export async function execute(message: Message, guildId: string) {
     const commands: APIApplicationCommand[] = [];
-    const commandsPath = path.join(process.cwd(), 'src/commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
+    const commandsPath = path.join(process.cwd(), 'src/infrastructure/commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('-command.ts'));
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
 
     for (const file of filteredCommandFiles) {
-        const { command } = await import(path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js')));
+        const { command } = await import(path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js')));
         commands.push(command.data.toJSON());
     }
 

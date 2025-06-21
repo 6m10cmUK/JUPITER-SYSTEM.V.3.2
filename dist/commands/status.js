@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.command = void 0;
 const discord_js_1 = require("discord.js");
-const createStatusDisplay_1 = require("../commons/createStatusDisplay");
-const createStatusDisplayVer7_1 = require("../commons/createStatusDisplayVer7");
-const rollAllStats_1 = require("../commons/rollAllStats");
-const rollAllStatsVer7_1 = require("../commons/rollAllStatsVer7");
+const createStatusDisplay_1 = require("../presentation/discord/displays/createStatusDisplay");
+const createStatusDisplayVer7_1 = require("../presentation/discord/displays/createStatusDisplayVer7");
+const rollAllStats_1 = require("../domain/services/rollAllStats");
+const rollAllStatsVer7_1 = require("../domain/services/rollAllStatsVer7");
 exports.command = {
     data: new discord_js_1.SlashCommandBuilder()
         .setName('status')

@@ -1,6 +1,7 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, ActivityType } from 'discord.js';
 import { DiscordAdapter } from './adapters/discord/DiscordAdapter';
 import * as dotenv from 'dotenv';
+import * as packageJson from '../package.json';
 dotenv.config();
 
 const client = new Client({ 
@@ -23,6 +24,15 @@ const discordAdapter = new DiscordAdapter(client);
 
 client.once('ready', () => {
     console.log('JUPITER-SYSTEM.V.3.2 is ready.');
+    
+    // ボットのステータスを設定
+    client.user?.setPresence({
+        activities: [{
+            name: `ver.${packageJson.version} `,
+            type: ActivityType.Playing
+        }],
+        status: 'online'
+    });
 });
 
 client.on('messageCreate', async (message) => {

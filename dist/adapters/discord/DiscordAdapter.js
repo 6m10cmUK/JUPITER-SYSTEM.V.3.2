@@ -34,8 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiscordAdapter = void 0;
-const diceRoll_1 = require("../../commands/classicCommands/diceRoll");
-const messages_1 = require("../../commons/messages");
+const ClassicDiceRollHandler_1 = require("../../infrastructure/commands/legacy/ClassicDiceRollHandler");
+const messages_1 = require("../../presentation/discord/builders/messages");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 class DiscordAdapter {
@@ -73,14 +73,18 @@ class DiscordAdapter {
         }
     }
     async loadCommands() {
-        const commandsPath = path.join(process.cwd(), 'src/commands');
-        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
+        const commandsPath = path.join(process.cwd(), 'src/infrastructure/commands');
+        const entries = fs.readdirSync(commandsPath, { withFileTypes: true });
+        const commandFiles = entries
+            .filter(entry => entry.isFile() && entry.name.endsWith('-command.ts'))
+            .map(entry => entry.name);
         for (const file of commandFiles) {
             try {
-                const filePath = path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'));
+                const filePath = path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'));
                 const { command } = await Promise.resolve(`${filePath}`).then(s => __importStar(require(s)));
                 if (command?.data?.name) {
                     this.commands.set(command.data.name, command);
+                    console.log(`コマンド読み込み完了: ${command.data.name}`);
                 }
                 else {
                     console.warn(`${file}のコマンド定義が不正だよ`);
@@ -137,12 +141,37 @@ class DiscordAdapter {
                     }
                 }
             }
+            else if (interaction.isModalSubmit()) {
+                // changeNameModalの処理
+                if (interaction.customId.startsWith('nameChangeModal:')) {
+                    const { handleNameChangeModal } = await Promise.resolve().then(() => __importStar(require('../../interactions/changeNameInteraction')));
+                    try {
+                        await handleNameChangeModal(interaction);
+                    }
+                    catch (error) {
+                        console.error(error);
+                        await interaction.reply((0, messages_1.createErrorMessage)(interaction, `MODAL SUBMIT FAILED`, error instanceof Error ? error.message : 'Unknown error'));
+                    }
+                }
+                // customSetModalの処理
+                if (interaction.customId.startsWith('customSetModal:')) {
+                    const { handleCustomSetModal } = await Promise.resolve().then(() => __importStar(require('../../interactions/customSetInteraction')));
+                    try {
+                        await handleCustomSetModal(interaction);
+                    }
+                    catch (error) {
+                        console.error(error);
+                        await interaction.reply((0, messages_1.createErrorMessage)(interaction, `MODAL SUBMIT FAILED`, error instanceof Error ? error.message : 'Unknown error'));
+                    }
+                }
+            }
         });
     }
     async handleMessage(message) {
-        await (0, diceRoll_1.diceRoll)(message);
-        if (!message.content.startsWith(this.prefix))
+        if (!message.content.startsWith(this.prefix)) {
+            await (0, ClassicDiceRollHandler_1.diceRoll)(message);
             return;
+        }
         const commandBody = message.content.slice(this.prefix.length).trim();
         const args = commandBody.split(/\s+/);
         const command = args.shift()?.toLowerCase();

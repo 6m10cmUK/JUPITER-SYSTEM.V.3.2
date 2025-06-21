@@ -1,8 +1,8 @@
 import { Client, Message } from 'discord.js';
 import { Command } from '../../interfaces/Command';
 import { InteractionHandler } from '../../interfaces/InteractionHandler';
-import { diceRoll } from '../../commands/classicCommands/diceRoll';
-import { createErrorMessage } from '../../commons/messages';
+import { diceRoll } from '../../infrastructure/commands/legacy/ClassicDiceRollHandler';
+import { createErrorMessage } from '../../presentation/discord/builders/messages';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -44,15 +44,19 @@ export class DiscordAdapter {
     }
 
     private async loadCommands() {
-        const commandsPath = path.join(process.cwd(), 'src/commands');
-        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
+        const commandsPath = path.join(process.cwd(), 'src/infrastructure/commands');
+        const entries = fs.readdirSync(commandsPath, { withFileTypes: true });
+        const commandFiles = entries
+            .filter(entry => entry.isFile() && entry.name.endsWith('-command.ts'))
+            .map(entry => entry.name);
 
         for (const file of commandFiles) {
             try {
-                const filePath = path.join(process.cwd(), 'dist/commands', file.replace('.ts', '.js'));
+                const filePath = path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'));
                 const { command } = await import(filePath);
                 if (command?.data?.name) {
                     this.commands.set(command.data.name, command);
+                    console.log(`コマンド読み込み完了: ${command.data.name}`);
                 } else {
                     console.warn(`${file}のコマンド定義が不正だよ`);
                 }
@@ -126,14 +130,48 @@ export class DiscordAdapter {
                         );
                     }
                 }
+            } else if (interaction.isModalSubmit()) {
+                // changeNameModalの処理
+                if (interaction.customId.startsWith('nameChangeModal:')) {
+                    const { handleNameChangeModal } = await import('../../interactions/changeNameInteraction');
+                    try {
+                        await handleNameChangeModal(interaction);
+                    } catch (error) {
+                        console.error(error);
+                        await interaction.reply(
+                            createErrorMessage(
+                                interaction,
+                                `MODAL SUBMIT FAILED`,
+                                error instanceof Error ? error.message : 'Unknown error'
+                            )
+                        );
+                    }
+                }
+                // customSetModalの処理
+                if (interaction.customId.startsWith('customSetModal:')) {
+                    const { handleCustomSetModal } = await import('../../interactions/customSetInteraction');
+                    try {
+                        await handleCustomSetModal(interaction);
+                    } catch (error) {
+                        console.error(error);
+                        await interaction.reply(
+                            createErrorMessage(
+                                interaction,
+                                `MODAL SUBMIT FAILED`,
+                                error instanceof Error ? error.message : 'Unknown error'
+                            )
+                        );
+                    }
+                }
             }
         });
     }
 
     async handleMessage(message: Message) {
-        await diceRoll(message);
-
-        if (!message.content.startsWith(this.prefix)) return;
+        if (!message.content.startsWith(this.prefix)) {
+            await diceRoll(message);
+            return;
+        }
 
         const commandBody = message.content.slice(this.prefix.length).trim();
         const args = commandBody.split(/\s+/);

@@ -3,17 +3,27 @@ import {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle,
-    ActionRowBuilder
+    ActionRowBuilder,
+    ModalSubmitInteraction
 } from 'discord.js';
-import { StatusData, StatKey, statOrder } from '../types/statusData';
-import { createStatusDisplay } from '../commons/createStatusDisplay';
+import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
+import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
+import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
+
 export const prefix = 'changeName';
 
 export async function execute(interaction: ButtonInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
+    // 権限チェック
+    if (interaction.user.id !== userId) {
+        await interaction.reply(createErrorMessage(interaction, `CHANGE NAME FAILED`, 'This command can only be used on your own character.'));
+        return;
+    }
+
     const modal = new ModalBuilder()
-        .setCustomId(`nameChange:${messageId}:${userId}`)
+        .setCustomId(`nameChangeModal:${messageId}:${userId}`)
         .setTitle('キャラクター名変更');
 
     const nameInput = new TextInputBuilder()
@@ -23,22 +33,24 @@ export async function execute(interaction: ButtonInteraction) {
         .setRequired(true);
 
     const firstActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput);
-
     modal.addComponents(firstActionRow);
 
     await interaction.showModal(modal);
+}
 
-    interaction.client.on('interactionCreate', async (modalInteraction) => {
-        if (!modalInteraction.isModalSubmit()) return;
-        if (modalInteraction.customId !== `nameChange:${messageId}:${userId}`) return;
+// モーダル送信のハンドラーを別途エクスポート
+export async function handleNameChangeModal(interaction: ModalSubmitInteraction) {
+    if (!interaction.customId.startsWith('nameChangeModal:')) return;
 
-        const newName = modalInteraction.fields.getTextInputValue('name');
-    // 元のメッセージを取得
-    const originalMessage = await interaction.channel?.messages.fetch(messageId);
-    if (!originalMessage) {
-        await interaction.reply({ content: 'メッセージが見つからないよ...', ephemeral: true });
+    const [_, messageId, userId] = interaction.customId.split(':');
+    const newName = interaction.fields.getTextInputValue('name');
+
+    // 権限チェック
+    if (interaction.user.id !== userId) {
+        await interaction.reply(createErrorMessage(interaction, `CHANGE NAME FAILED`, 'This command can only be used on your own character.'));
         return;
     }
+
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
     if (!interaction.channel) {
@@ -46,61 +58,38 @@ export async function execute(interaction: ButtonInteraction) {
         return;
     }
 
-    const message = await interaction.channel.messages.fetch(messageId);
-    if (!message) {
-        await errorMessage('メッセージが見つかりませんでした');
+    // 元のメッセージを取得
+    const originalMessage = await interaction.channel.messages.fetch(messageId);
+    if (!originalMessage) {
+        await errorMessage('メッセージが見つからないよ...');
         return;
     }
 
-    const embed = message.embeds[0];
-    if (!embed || !embed.data?.fields?.[0]) {
-        await errorMessage('embedまたはフィールドデータが見つかりませんでした');
+    const embed = originalMessage.embeds[0];
+    if (!embed) {
+        await errorMessage('embedデータが見つかりませんでした');
         return;
     }
 
-    const fields = embed.data.fields;
-
-    const ver = embed.data.footer?.text ?? '6';
-
-    const statusData: Partial<StatusData> & { details: { [key: string]: string } } = {
-        details: {}
-    };
-
-    statOrder.forEach((stat, index) => {
-        const field = fields[index];
-        if (field) {
-            const statValue = parseInt(field.name.match(/\d+$/)?.[0] || '0', 10);
-            statusData[stat as StatKey] = statValue;
-            statusData.details[stat] = field.value;
-        }
-    });
-
-
-
-    var history = fields.find(field => field.name === "変更履歴")?.value ?? '';
-    if (history.length > 1) {
-        history += "\n";
+    // EmbedからStatusResultDtoを復元
+    const parser = new StatusEmbedParser();
+    const statusData = parser.parse(embed);
+    
+    if (!statusData) {
+        await errorMessage('ステータスデータの解析に失敗しました');
+        return;
     }
 
-    let rerollCount = 0;
-    fields.forEach(field => {
-        const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
-        if (match) {
-            rerollCount = parseInt(match[1], 10);
-        }
-    });
+    // 新しい名前を設定
+    statusData.characterName = newName;
+    statusData.messageId = messageId;
+    statusData.userId = userId;
 
-    const display = await createStatusDisplay(
-        interaction,
-        statusData as StatusData,
-        messageId,
-        rerollCount,
-        history,
-        newName,
-        ver
-    );
+    // ステータス表示を更新
+    const formatter = new StatusEmbedFormatter();
+    const updatedEmbed = await formatter.format(statusData, interaction);
+    const components = StatusComponentBuilder.createComponents(statusData, messageId, userId);
 
-    await originalMessage.edit(display);
-    await modalInteraction.deferUpdate();
-    });
-} 
+    await originalMessage.edit({ embeds: [updatedEmbed], components });
+    await interaction.deferUpdate();
+}

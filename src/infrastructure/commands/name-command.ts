@@ -23,6 +23,15 @@ export const command: Command = {
                     { name: '女性名', value: 'female' }
                 )
         )
+        .addStringOption((option: SlashCommandStringOption) =>
+            option.setName('region')
+                .setDescription('名前の地域')
+                .setRequired(false)
+                .addChoices(
+                    { name: 'JPN', value: 'jp' },
+                    { name: 'ENG', value: 'en' }
+                )
+        )
         .addIntegerOption((option: SlashCommandIntegerOption) =>
             option.setName('count')
                 .setDescription('取得する名前の数')
@@ -32,8 +41,6 @@ export const command: Command = {
         )as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {
-
-        
         const dataPath = path.join(process.cwd(), 'src', 'data', 'names.json');
         const nameData = await JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 
@@ -42,25 +49,50 @@ export const command: Command = {
             .setColor(0x888888);
 
         const type = interaction.options.getString('type');
+        const region = interaction.options.getString('region') ?? 'jp';
         const count = interaction.options.getInteger('count') ?? 1;
 
-        console.log(count);
         const names: string[] = [];
-        for (let i = 0; i < count; i++) {
-            const randomSei = nameData.sei[rollDice(1, 100).reduce((a, b) => a + b, 0) - 1];
-            let randomMei = '';
-            if (type === 'male') {
-                randomMei = nameData.mei.male[rollDice(1, 100).reduce((a, b) => a + b, 0) - 1];
-                embed.setFooter({ text: "男性名" });
-            } else {
-                randomMei = nameData.mei.female[rollDice(1, 100).reduce((a, b) => a + b, 0) - 1];
-                embed.setFooter({ text: "女性名" });
+        
+        if (region === 'jp') {
+            // 日本名の生成
+            for (let i = 0; i < count; i++) {
+                const seiIndex = rollDice(1, nameData.sei.length)[0] - 1;
+                const randomSei = nameData.sei[seiIndex];
+                let randomMei = '';
+                
+                if (type === 'male') {
+                    const meiIndex = rollDice(1, nameData.mei.male.length)[0] - 1;
+                    randomMei = nameData.mei.male[meiIndex];
+                    embed.setFooter({ text: "日本人男性名" });
+                } else {
+                    const meiIndex = rollDice(1, nameData.mei.female.length)[0] - 1;
+                    randomMei = nameData.mei.female[meiIndex];
+                    embed.setFooter({ text: "日本人女性名" });
+                }
+                names.push(`${randomSei} ${randomMei}`);
             }
-
-            names.push(`${randomSei} ${randomMei}`);
+        } else {
+            // 海外名の生成
+            for (let i = 0; i < count; i++) {
+                const surnameIndex = rollDice(1, nameData.surname_en.length)[0] - 1;
+                const randomSurname = nameData.surname_en[surnameIndex];
+                let randomGiven = '';
+                
+                if (type === 'male') {
+                    const givenIndex = rollDice(1, nameData.given_en.male.length)[0] - 1;
+                    randomGiven = nameData.given_en.male[givenIndex];
+                    embed.setFooter({ text: "海外男性名" });
+                } else {
+                    const givenIndex = rollDice(1, nameData.given_en.female.length)[0] - 1;
+                    randomGiven = nameData.given_en.female[givenIndex];
+                    embed.setFooter({ text: "海外女性名" });
+                }
+                names.push(`${randomGiven} ${randomSurname}`);
+            }
         }
+        
         embed.setDescription(names.join('\n\n'));
-
         await interaction.reply({ embeds: [embed] });
     }
 };

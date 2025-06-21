@@ -38,7 +38,13 @@ export class DiceService implements IDiceService {
         return results;
     }
 
-    private rollCCB(expression: string): CCBRoll {
+    private rollCCB(expression: string): CCBRoll | DiceRoll {
+        // "ccb"のみの場合は通常の1d100として処理
+        if (expression.toLowerCase() === 'ccb') {
+            return this.rollStandard('1d100');
+        }
+        
+        // ccb<=50 のような形式の場合はCCBRollとして処理
         const parts = expression.split('<=');
         const target = parts[1] ? parseInt(parts[1]) : 50;
         const roll = rollDice(1, 100)[0];

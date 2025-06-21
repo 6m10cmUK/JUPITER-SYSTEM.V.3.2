@@ -24,7 +24,8 @@ export class DiceExpression {
     }
 
     isCCB(): boolean {
-        return this.normalizedExpression.startsWith('ccb') || 
+        // ccbのみ、またはccb<=数字の形式をチェック
+        return /^ccb(<=\d+)?$/i.test(this.normalizedExpression) || 
                this.normalizedExpression.startsWith('1d100<=');
     }
 

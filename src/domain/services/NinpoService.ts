@@ -8,27 +8,38 @@ interface NinpoFile {
 }
 
 export class NinpoService {
-    private hanyoNinpo: NinpoData[] = [];
-    private hasubaNinpo: NinpoData[] = [];
-    private ninpoMetadata: Map<string, string> = new Map(); // カテゴリ値 -> 表示名
+    private allNinpo: Map<string, NinpoData[]> = new Map(); // ファイルID -> 忍法データ
+    private ninpoMetadata: Map<string, string> = new Map(); // ファイルID -> 表示名
 
     constructor() {
         this.loadNinpoData();
     }
 
     private loadNinpoData(): void {
-        const hanyoPath = path.join(process.cwd(), 'src', 'data', 'shinobigami', 'ninpo', 'hanyo.json');
-        const hasubaPath = path.join(process.cwd(), 'src', 'data', 'shinobigami', 'ninpo', 'hasuba.json');
+        const ninpoDir = path.join(process.cwd(), 'src', 'data', 'shinobigami', 'ninpo');
         
-        const hanyoFile: NinpoFile = JSON.parse(fs.readFileSync(hanyoPath, 'utf8'));
-        const hasubaFile: NinpoFile = JSON.parse(fs.readFileSync(hasubaPath, 'utf8'));
-        
-        // sourceプロパティを追加
-        this.hanyoNinpo = hanyoFile.data.map(ninpo => ({ ...ninpo, source: hanyoFile.name }));
-        this.hasubaNinpo = hasubaFile.data.map(ninpo => ({ ...ninpo, source: hasubaFile.name }));
-        
-        this.ninpoMetadata.set('hanyo', hanyoFile.name);
-        this.ninpoMetadata.set('hasuba', hasubaFile.name);
+        try {
+            const files = fs.readdirSync(ninpoDir).filter(file => file.endsWith('.json'));
+            
+            files.forEach(filename => {
+                const filePath = path.join(ninpoDir, filename);
+                const fileId = filename.replace('.json', '');
+                
+                try {
+                    const fileContent: NinpoFile = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                    
+                    // sourceプロパティを追加
+                    const ninpoData = fileContent.data.map(ninpo => ({ ...ninpo, source: fileContent.name }));
+                    
+                    this.allNinpo.set(fileId, ninpoData);
+                    this.ninpoMetadata.set(fileId, fileContent.name);
+                } catch (error) {
+                    console.error(`Error loading ninpo file ${filename}:`, error);
+                }
+            });
+        } catch (error) {
+            console.error('Error reading ninpo directory:', error);
+        }
     }
 
     searchNinpo(criteria: NinpoSearchCriteria): NinpoData[] {
@@ -38,11 +49,13 @@ export class NinpoService {
         let targetNinpos: NinpoData[] = [];
         if (category === 'all' as any) {
             // 全カテゴリーから検索
-            targetNinpos = [...this.hanyoNinpo, ...this.hasubaNinpo];
-        } else if (category === 'hanyo') {
-            targetNinpos = this.hanyoNinpo;
-        } else if (category === 'hasuba') {
-            targetNinpos = this.hasubaNinpo;
+            targetNinpos = Array.from(this.allNinpo.values()).flat();
+        } else {
+            // 特定のファイルIDから検索
+            const ninpoData = this.allNinpo.get(category);
+            if (ninpoData) {
+                targetNinpos = ninpoData;
+            }
         }
 
         if (searchType === 'all') {
@@ -83,9 +96,10 @@ export class NinpoService {
         
         // 各カテゴリーのページ数を計算
         Object.entries(grouped).forEach(([category, categoryNinpos]) => {
+            const pageCount = Math.max(1, Math.ceil(categoryNinpos.length / itemsPerPage)); // 最低1ページは確保
             categoryMap.set(category, {
                 ninpos: categoryNinpos,
-                pageCount: Math.ceil(categoryNinpos.length / itemsPerPage)
+                pageCount: pageCount
             });
         });
         

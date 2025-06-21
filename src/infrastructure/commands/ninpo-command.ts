@@ -37,7 +37,12 @@ function getNinpoCategories(): { name: string; value: string }[] {
         // フォールバック
         return [
             { name: '汎用忍法', value: 'hanyo' },
-            { name: '斜歯忍群', value: 'hasuba' }
+            { name: '斜歯忍群', value: 'hasuba' },
+            { name: '鞍馬神流', value: 'kurama' },
+            { name: 'ハグレモノ', value: 'haguremono' },
+            { name: '比良坂機関', value: 'hirasaka' },
+            { name: '私立御斎学園', value: 'otogi' },
+            { name: '隠忍の血統', value: 'oni' }
         ];
     }
     

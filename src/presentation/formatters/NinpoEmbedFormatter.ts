@@ -52,8 +52,11 @@ export class NinpoEmbedFormatter {
             currentCategory = sortedCategories[0];
         }
         
-        const currentCategoryInfo = categoryInfo.get(currentCategory)!;
-        const categoryPage = Math.min(criteria.page, currentCategoryInfo.pageCount);
+        const currentCategoryInfo = categoryInfo.get(currentCategory);
+        if (!currentCategoryInfo) {
+            throw new Error(`Category ${currentCategory} not found in category info`);
+        }
+        const categoryPage = Math.min(criteria.page, currentCategoryInfo.pageCount || 1);
         
         const displayData: NinpoDisplayData = {
             title: categoryInfo.size > 1 ? `${title} - ${currentCategory}` : title,

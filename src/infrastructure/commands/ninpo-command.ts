@@ -103,6 +103,15 @@ export const command: Command = {
                         .setRequired(true)
                         .addChoices(...ninpoCategories)
                 )
+        )
+        .addSubcommand((subcommand: SlashCommandSubcommandBuilder) =>
+            subcommand.setName('effect')
+                .setDescription('効果説明で検索')
+                .addStringOption((option: SlashCommandStringOption) =>
+                    option.setName('query')
+                        .setDescription('検索したい効果（例：ダメージ、回復、変調）')
+                        .setRequired(true)
+                )
         ) as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {
@@ -112,9 +121,9 @@ export const command: Command = {
         const query = interaction.options.getString('query') ?? '';
         const formatter = new NinpoEmbedFormatter();
 
-        // nameサブコマンドの場合はカテゴリを指定しない（全検索）
+        // nameとeffectサブコマンドの場合はカテゴリを指定しない（全検索）
         let category: NinpoSearchCriteria['category'] | 'all';
-        if (subcommand === 'name') {
+        if (subcommand === 'name' || subcommand === 'effect') {
             category = 'all' as any;
         } else {
             category = interaction.options.getString('category', true) as NinpoSearchCriteria['category'];

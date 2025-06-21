@@ -121,8 +121,8 @@ export class NinpoEmbedFormatter {
             
             // 検索タイプに応じて表示を変更
             if (displayData.searchType && displayData.searchType !== 'all') {
-                if (displayData.searchType === 'name' && ninpo.source) {
-                    // 名前検索：流派とカテゴリを表示
+                if ((displayData.searchType === 'name' || displayData.searchType === 'effect') && ninpo.source) {
+                    // 名前検索・効果検索：流派とカテゴリを表示
                     basicInfo = `【${ninpo.source}・${ninpo.category}】\n${basicInfo}`;
                 } else {
                     // その他の検索：カテゴリのみ表示

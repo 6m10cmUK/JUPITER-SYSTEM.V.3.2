@@ -74,6 +74,8 @@ export class NinpoService {
                     return ninpo.specialty.toLowerCase().includes(query.toLowerCase());
                 case 'category':
                     return ninpo.category.toLowerCase().includes(query.toLowerCase());
+                case 'effect':
+                    return ninpo.description.toLowerCase().includes(query.toLowerCase());
                 default:
                     return false;
             }
@@ -125,6 +127,9 @@ export class NinpoService {
                 break;
             case 'category':
                 baseTitle = `分類検索：${query}`;
+                break;
+            case 'effect':
+                baseTitle = `効果検索：${query}`;
                 break;
             default:
                 baseTitle = '忍法一覧';

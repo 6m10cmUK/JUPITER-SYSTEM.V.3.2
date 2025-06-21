@@ -14,7 +14,7 @@ export interface NinpoData {
 
 export interface NinpoSearchCriteria {
     query: string;
-    searchType: 'all' | 'name' | 'type' | 'specialty' | 'category';
+    searchType: 'all' | 'name' | 'type' | 'specialty' | 'category' | 'effect';
     category: 'hanyo' | 'hasuba'; // 汎用、斜歯
     page: number;
     ninpoCategory?: string; // 忍法カテゴリー（汎用忍法、流派忍法等）
@@ -27,5 +27,5 @@ export interface NinpoDisplayData {
     maxPage: number;
     categoryPages?: Map<string, number>; // カテゴリーごとのページ数
     currentCategory?: string; // 現在表示中のカテゴリー
-    searchType?: 'all' | 'name' | 'type' | 'specialty' | 'category'; // 検索タイプ
+    searchType?: 'all' | 'name' | 'type' | 'specialty' | 'category' | 'effect'; // 検索タイプ
 }

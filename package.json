@@ -1,6 +1,6 @@
 {
   "name": "jupiter-system-v3.2",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "description": "Discord bot for Call of Cthulhu TRPG",
   "main": "dist/index.js",
   "scripts": {

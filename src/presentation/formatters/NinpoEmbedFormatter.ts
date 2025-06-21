@@ -117,7 +117,35 @@ export class NinpoEmbedFormatter {
             const title = `${ninpo.name}（${ninpo.kana}）`;
             
             // 1行目：基本情報
-            let basicInfo = `［${ninpo.type}］${ninpo.specialty} | 対象:${ninpo.target} 射程:${ninpo.range}${ninpo.cost ? ` コスト:${ninpo.cost}` : ''}${ninpo.correction ? ` **${ninpo.correction}**` : ''}`;
+            const parts = [];
+            parts.push(`［${ninpo.type}］`);
+            
+            // specialtyが空でない場合のみ表示
+            if (ninpo.specialty && ninpo.specialty !== '') {
+                parts.push(ninpo.specialty);
+            }
+            
+            // targetが空でない場合のみ表示
+            if (ninpo.target && ninpo.target !== '') {
+                parts.push(`対象:${ninpo.target}`);
+            }
+            
+            // rangeが空でない場合のみ表示
+            if (ninpo.range && ninpo.range !== '') {
+                parts.push(`射程:${ninpo.range}`);
+            }
+            
+            // costが空でない場合のみ表示
+            if (ninpo.cost && ninpo.cost !== '') {
+                parts.push(`コスト:${ninpo.cost}`);
+            }
+            
+            // correctionが空でない場合のみ表示（太字で）
+            if (ninpo.correction && ninpo.correction !== '') {
+                parts.push(`**${ninpo.correction}**`);
+            }
+            
+            let basicInfo = parts.join(' | ');
             
             // 検索タイプに応じて表示を変更
             if (displayData.searchType && displayData.searchType !== 'all') {

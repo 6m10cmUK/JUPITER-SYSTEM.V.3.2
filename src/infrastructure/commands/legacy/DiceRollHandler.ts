@@ -2,8 +2,10 @@ import { Message } from 'discord.js';
 import { RollDiceUseCase } from '../../../application/use-cases/dice/RollDiceUseCase';
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFormatter';
+import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
+import { DiceCommandValidator } from './validation/diceCommandValidator';
 
-export class ClassicDiceRollHandler {
+export class DiceRollHandler {
     private readonly rollDiceUseCase: RollDiceUseCase;
     private readonly formatter: DiceEmbedFormatter;
 
@@ -21,14 +23,14 @@ export class ClassicDiceRollHandler {
         }
 
         // クラシックダイスコマンドとして有効かチェック
-        if (!this.isValidDiceCommand(content)) {
+        if (!DiceCommandValidator.isValidCommand(content)) {
             return;
         }
 
         try {
             // スペース以降を除外した式のみを処理に渡す
             const parts = content.split(' ');
-            const diceExpression = parts[0];
+            const diceExpression = convertFullWidthToHalfWidth(parts[0]);
             
             const response = await this.rollDiceUseCase.execute({
                 expression: diceExpression,
@@ -56,47 +58,5 @@ export class ClassicDiceRollHandler {
             console.error('Classic dice roll error:', error);
         }
     }
-
-    private isValidDiceCommand(content: string): boolean {
-        // スペースで分割して最初の部分を取得
-        const parts = content.split(' ');
-        const diceExpression = parts[0];
-
-        // 特殊ケース: "ccb"で始まる場合
-        if (diceExpression.toLowerCase().startsWith('ccb')) {
-            // ccbのみ、またはccb<=数字 の形式かチェック
-            const ccbPattern = /^ccb(?:(?:<|>|<=|>=|=)\d+)?$/i;
-            return ccbPattern.test(diceExpression);
-        }
-
-        // 特殊ケース: "choice"で始まる場合
-        if (diceExpression.toLowerCase().startsWith('choice(')) {
-            return true;
-        }
-
-        // 特殊ケース: "res"で始まる場合
-        if (diceExpression.toLowerCase().startsWith('res(')) {
-            return true;
-        }
-
-        // ダイス表記のパターン
-        const dicePattern = /\d+d\d+/i;
-        
-        // 最初の部分がダイス表記を含むかチェック
-        if (!dicePattern.test(diceExpression)) {
-            return false;
-        }
-
-        // 文字列が混入していないかチェック
-        // 許可する文字: 数字、d/D、+、-、*、/、(、)、<、>、=、空白
-        const validPattern = /^[\d\s+\-*/()dD<>=]+$/;
-        
-        // スペース以降に文字列があっても、最初の部分が有効な式なら通す
-        return validPattern.test(diceExpression);
-    }
 }
 
-export const diceRoll = async (message: Message) => {
-    const handler = new ClassicDiceRollHandler();
-    await handler.handle(message);
-};

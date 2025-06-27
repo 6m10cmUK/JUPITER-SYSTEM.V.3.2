@@ -34,7 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiscordAdapter = void 0;
-const ClassicDiceRollHandler_1 = require("../../infrastructure/commands/legacy/ClassicDiceRollHandler");
+const classicDiceRoll_1 = require("../../infrastructure/commands/legacy/classicDiceRoll");
 const messages_1 = require("../../presentation/discord/builders/messages");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -64,11 +64,11 @@ class DiscordAdapter {
                     this.interactionHandlers.set(handler.prefix, handler);
                 }
                 else {
-                    console.warn(`${file}のインタラクションハンドラーの定義が不正だよ`);
+                    console.warn(`Invalid interaction handler definition in ${file}`);
                 }
             }
             catch (error) {
-                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+                console.error(`Error loading ${file}:`, error);
             }
         }
     }
@@ -84,14 +84,14 @@ class DiscordAdapter {
                 const { command } = await Promise.resolve(`${filePath}`).then(s => __importStar(require(s)));
                 if (command?.data?.name) {
                     this.commands.set(command.data.name, command);
-                    console.log(`コマンド読み込み完了: ${command.data.name}`);
+                    console.log(`Command loaded: ${command.data.name}`);
                 }
                 else {
-                    console.warn(`${file}のコマンド定義が不正だよ`);
+                    console.warn(`Invalid command definition in ${file}`);
                 }
             }
             catch (error) {
-                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+                console.error(`Error loading ${file}:`, error);
             }
         }
     }
@@ -106,7 +106,7 @@ class DiscordAdapter {
                 this.adminCommands.set(commandName, execute);
             }
             catch (error) {
-                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+                console.error(`Error loading ${file}:`, error);
             }
         }
     }
@@ -130,15 +130,20 @@ class DiscordAdapter {
             }
             else if (interaction.isStringSelectMenu() || interaction.isButton()) {
                 const [prefix] = interaction.customId.split(':');
+                console.log(`Processing interaction with customId: ${interaction.customId}, prefix: ${prefix}`);
                 const handler = this.interactionHandlers.get(prefix);
                 if (handler) {
+                    console.log(`Found handler for prefix: ${prefix}`);
                     try {
                         await handler.execute(interaction);
                     }
                     catch (error) {
-                        console.error(error);
+                        console.error(`Error executing handler for ${prefix}:`, error);
                         await interaction.reply((0, messages_1.createErrorMessage)(interaction, `INTERACTION FAILED`, error instanceof Error ? error.message : 'Unknown error'));
                     }
+                }
+                else {
+                    console.warn(`No handler found for prefix: ${prefix}`);
                 }
             }
             else if (interaction.isModalSubmit()) {
@@ -164,12 +169,23 @@ class DiscordAdapter {
                         await interaction.reply((0, messages_1.createErrorMessage)(interaction, `MODAL SUBMIT FAILED`, error instanceof Error ? error.message : 'Unknown error'));
                     }
                 }
+                // wordleGuessModalの処理
+                if (interaction.customId.startsWith('wordle:guess:')) {
+                    const { handleWordleGuessModal } = await Promise.resolve().then(() => __importStar(require('../../modals/wordleGuessModal')));
+                    try {
+                        await handleWordleGuessModal(interaction);
+                    }
+                    catch (error) {
+                        console.error(error);
+                        await interaction.reply((0, messages_1.createErrorMessage)(interaction, `WORDLE GUESS FAILED`, error instanceof Error ? error.message : 'Unknown error'));
+                    }
+                }
             }
         });
     }
     async handleMessage(message) {
         if (!message.content.startsWith(this.prefix)) {
-            await (0, ClassicDiceRollHandler_1.diceRoll)(message);
+            await (0, classicDiceRoll_1.diceRoll)(message);
             return;
         }
         const commandBody = message.content.slice(this.prefix.length).trim();

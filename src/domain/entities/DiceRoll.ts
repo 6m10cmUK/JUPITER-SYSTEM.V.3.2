@@ -66,11 +66,11 @@ export class CCBRoll extends DiceRoll {
         return this.fumble;
     }
 
-    static evaluate(target: number, roll: number): CCBRoll {
+    static evaluate(target: number, roll: number, ruleType: 'cc' | 'ccb' = 'ccb'): CCBRoll {
         const isSuccess = roll <= target;
         const isSpecial = roll <= Math.ceil(target / 5);
-        const isCritical = roll <= 5;
-        const isFumble = roll >= 96;
+        const isCritical = ruleType === 'cc' ? roll === 1 : roll <= 5;
+        const isFumble = ruleType === 'cc' ? roll === 100 : roll >= 96;
 
         return new CCBRoll(
             `1d100<=${target}`,

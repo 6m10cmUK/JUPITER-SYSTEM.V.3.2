@@ -1,7 +1,7 @@
 import { Client, Message } from 'discord.js';
 import { Command } from '../../interfaces/Command';
 import { InteractionHandler } from '../../interfaces/InteractionHandler';
-import { diceRoll } from '../../infrastructure/commands/legacy/ClassicDiceRollHandler';
+import { diceRoll } from '../../infrastructure/commands/legacy/classicDiceRoll';
 import { createErrorMessage } from '../../presentation/discord/builders/messages';
 
 import * as fs from 'fs';
@@ -35,10 +35,10 @@ export class DiscordAdapter {
                 if (handler.prefix && handler.execute) {
                     this.interactionHandlers.set(handler.prefix, handler);
                 } else {
-                    console.warn(`${file}のインタラクションハンドラーの定義が不正だよ`);
+                    console.warn(`Invalid interaction handler definition in ${file}`);
                 }
             } catch (error) {
-                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+                console.error(`Error loading ${file}:`, error);
             }
         }
     }
@@ -56,12 +56,12 @@ export class DiscordAdapter {
                 const { command } = await import(filePath);
                 if (command?.data?.name) {
                     this.commands.set(command.data.name, command);
-                    console.log(`コマンド読み込み完了: ${command.data.name}`);
+                    console.log(`Command loaded: ${command.data.name}`);
                 } else {
-                    console.warn(`${file}のコマンド定義が不正だよ`);
+                    console.warn(`Invalid command definition in ${file}`);
                 }
             } catch (error) {
-                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+                console.error(`Error loading ${file}:`, error);
             }
         }
     }
@@ -77,7 +77,7 @@ export class DiscordAdapter {
                 const commandName = file.replace('.js', '');
                 this.adminCommands.set(commandName, execute);
             } catch (error) {
-                console.error(`${file}の読み込み中にエラーが発生したよ:`, error);
+                console.error(`Error loading ${file}:`, error);
             }
         }
     }
@@ -114,13 +114,15 @@ export class DiscordAdapter {
                 }
             } else if (interaction.isStringSelectMenu() || interaction.isButton()) {
                 const [prefix] = interaction.customId.split(':');
+                console.log(`Processing interaction with customId: ${interaction.customId}, prefix: ${prefix}`);
                 const handler = this.interactionHandlers.get(prefix);
 
                 if (handler) {
+                    console.log(`Found handler for prefix: ${prefix}`);
                     try {
                         await handler.execute(interaction);
                     } catch (error) {
-                        console.error(error);
+                        console.error(`Error executing handler for ${prefix}:`, error);
                         await interaction.reply(
                             createErrorMessage(
                                 interaction,
@@ -129,6 +131,8 @@ export class DiscordAdapter {
                             )
                         );
                     }
+                } else {
+                    console.warn(`No handler found for prefix: ${prefix}`);
                 }
             } else if (interaction.isModalSubmit()) {
                 // changeNameModalの処理
@@ -158,6 +162,22 @@ export class DiscordAdapter {
                             createErrorMessage(
                                 interaction,
                                 `MODAL SUBMIT FAILED`,
+                                error instanceof Error ? error.message : 'Unknown error'
+                            )
+                        );
+                    }
+                }
+                // wordleGuessModalの処理
+                if (interaction.customId.startsWith('wordle:guess:')) {
+                    const { handleWordleGuessModal } = await import('../../modals/wordleGuessModal');
+                    try {
+                        await handleWordleGuessModal(interaction);
+                    } catch (error) {
+                        console.error(error);
+                        await interaction.reply(
+                            createErrorMessage(
+                                interaction,
+                                `WORDLE GUESS FAILED`,
                                 error instanceof Error ? error.message : 'Unknown error'
                             )
                         );

@@ -47,12 +47,9 @@ export const command: Command = {
             
             fields.push(
                 { name: `🔫 攻撃側 ${count > 1 ? `#${i + 1}` : ''}`, value: randomAttacker, inline: true },
-                { name: `🛡️ 防衛側 ${count > 1 ? `#${i + 1}` : ''}`, value: randomDefender, inline: true }
+                { name: `🛡️ 防衛側 ${count > 1 ? `#${i + 1}` : ''}`, value: randomDefender, inline: true },
+                { name: '\u200B', value: '\u200B', inline: true }
             );
-            
-            if (i < count - 1) {
-                fields.push({ name: '\u200B', value: '\u200B', inline: true });
-            }
         }
         
         embed.setFields(...fields);

@@ -40,10 +40,27 @@ export const command: Command = {
             .setTitle('R6S オペレーター選出');
             
         const fields = [];
+        const usedAttackers: string[] = [];
+        const usedDefenders: string[] = [];
         
         for (let i = 0; i < count; i++) {
-            const randomAttacker = attackers[Math.floor(Math.random() * attackers.length)];
-            const randomDefender = defenders[Math.floor(Math.random() * defenders.length)];
+            // 重複しない攻撃側オペレーターを選択
+            const availableAttackers = attackers.filter(op => !usedAttackers.includes(op));
+            if (availableAttackers.length === 0) {
+                await interaction.reply({ content: '選択可能な攻撃側オペレーターが不足しています。', ephemeral: true });
+                return;
+            }
+            const randomAttacker = availableAttackers[Math.floor(Math.random() * availableAttackers.length)];
+            usedAttackers.push(randomAttacker);
+            
+            // 重複しない防衛側オペレーターを選択
+            const availableDefenders = defenders.filter(op => !usedDefenders.includes(op));
+            if (availableDefenders.length === 0) {
+                await interaction.reply({ content: '選択可能な防衛側オペレーターが不足しています。', ephemeral: true });
+                return;
+            }
+            const randomDefender = availableDefenders[Math.floor(Math.random() * availableDefenders.length)];
+            usedDefenders.push(randomDefender);
             
             fields.push(
                 { name: `🔫 攻撃側 ${count > 1 ? `#${i + 1}` : ''}`, value: randomAttacker, inline: true },

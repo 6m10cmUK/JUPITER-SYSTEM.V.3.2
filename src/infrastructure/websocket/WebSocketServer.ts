@@ -8,6 +8,9 @@ export interface NotificationData {
   message: string;
   duration?: number;
   sender?: string;
+  source?: string;
+  app?: string;
+  is_slack?: boolean;
 }
 
 export class WebSocketServer extends EventEmitter {
@@ -58,6 +61,13 @@ export class WebSocketServer extends EventEmitter {
   }
   
   public sendNotification(data: NotificationData): void {
+    // Slack通知の場合は特別な処理
+    if (data.is_slack || data.app?.toLowerCase().includes('slack')) {
+      console.log(`[WebSocket] Slack通知を検出: ${data.title}`);
+      // Slack通知用の特別なフォーマット
+      data.title = `💬 ${data.title}`;
+    }
+    
     const message = JSON.stringify(data);
     
     this.clients.forEach((ws, clientId) => {

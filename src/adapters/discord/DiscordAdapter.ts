@@ -3,6 +3,7 @@ import { Command } from '../../interfaces/Command';
 import { InteractionHandler } from '../../interfaces/InteractionHandler';
 import { diceRoll } from '../../infrastructure/commands/legacy/classicDiceRoll';
 import { createErrorMessage } from '../../presentation/discord/builders/messages';
+import { WebSocketServer } from '../../infrastructure/websocket/WebSocketServer';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,7 +14,7 @@ export class DiscordAdapter {
     private adminCommands: Map<string, (message: Message, guildId: string) => Promise<void>> = new Map();
     private interactionHandlers: Map<string, InteractionHandler> = new Map();
 
-    constructor(private client: Client) {
+    constructor(private client: Client, private wsServer?: WebSocketServer) {
         this.init();
     }
 
@@ -53,10 +54,16 @@ export class DiscordAdapter {
         for (const file of commandFiles) {
             try {
                 const filePath = path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'));
-                const { command } = await import(filePath);
-                if (command?.data?.name) {
+                const module = await import(filePath);
+                
+                // notify-commandの特別処理
+                if (file === 'notify-command.js' && module.createNotifyCommand) {
+                    const command = module.createNotifyCommand(this.wsServer);
                     this.commands.set(command.data.name, command);
                     console.log(`Command loaded: ${command.data.name}`);
+                } else if (module.command?.data?.name) {
+                    this.commands.set(module.command.data.name, module.command);
+                    console.log(`Command loaded: ${module.command.data.name}`);
                 } else {
                     console.warn(`Invalid command definition in ${file}`);
                 }

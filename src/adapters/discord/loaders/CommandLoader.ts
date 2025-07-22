@@ -30,8 +30,8 @@ export class CommandLoader {
     }
 
     async loadAdminCommands(): Promise<void> {
-        const { setupCommand } = await import('../../../infrastructure/commands/admin/setup');
-        this.adminCommands.set('setup', setupCommand);
+        const { execute } = await import('../../../adminCommands/setup');
+        this.adminCommands.set('setup', execute);
     }
 
     getCommand(name: string): Command | undefined {

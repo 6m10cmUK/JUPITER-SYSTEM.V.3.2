@@ -37,6 +37,8 @@ const discord_js_1 = require("discord.js");
 const DiscordAdapter_1 = require("./adapters/discord/DiscordAdapter");
 const dotenv = __importStar(require("dotenv"));
 const packageJson = __importStar(require("../package.json"));
+const http_1 = require("http");
+const WebSocketServer_1 = require("./infrastructure/websocket/WebSocketServer");
 dotenv.config();
 const client = new discord_js_1.Client({
     intents: [
@@ -51,7 +53,12 @@ client.on('error', error => {
 process.on('unhandledRejection', error => {
     console.error('未処理のエラー:', error);
 });
-const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client);
+// HTTPサーバーとWebSocketサーバーの初期化
+const server = (0, http_1.createServer)();
+const PORT = parseInt(process.env.PORT || '8080');
+const wsServer = new WebSocketServer_1.WebSocketServer(server, PORT);
+// DiscordAdapterにWebSocketサーバーを渡す
+const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client, wsServer);
 client.once('ready', () => {
     console.log('JUPITER-SYSTEM.V.3.2 is ready.');
     // ボットのステータスを設定
@@ -67,5 +74,10 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot)
         return;
     await discordAdapter.handleMessage(message);
+});
+// サーバーを起動
+server.listen(PORT, () => {
+    console.log(`サーバーがポート ${PORT} で起動しました`);
+    console.log(`WebSocketも同じポートで待機中`);
 });
 client.login(process.env.DISCORD_TOKEN);

@@ -49,7 +49,6 @@ client.on('messageCreate', async (message) => {
 });
 
 // サーバーを起動
-const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
     console.log(`サーバーがポート ${PORT} で起動しました`);
     console.log(`WebSocketも同じポートで待機中`);

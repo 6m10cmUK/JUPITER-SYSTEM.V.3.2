@@ -47,12 +47,15 @@ export class MessageHandler {
 
     private async handleDiceRoll(message: Message, content: string): Promise<void> {
         try {
-            const result = await diceRoll(content);
-            await message.reply(result);
+            await diceRoll(message);
         } catch (error) {
             console.error('Dice roll error:', error);
-            const errorMessage = createErrorMessage(error instanceof Error ? error.message : 'Unknown error');
-            await message.reply(errorMessage);
+            const errorMsg = createErrorMessage(
+                message,
+                'Dice Roll Error',
+                error instanceof Error ? error.message : 'Unknown error'
+            );
+            await message.reply(errorMsg);
         }
     }
 

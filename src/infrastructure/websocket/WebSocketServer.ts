@@ -1,7 +1,6 @@
 import { WebSocketServer as WSServer } from 'ws';
 import { Server } from 'http';
 import { EventEmitter } from 'events';
-import Bonjour from 'bonjour-service';
 
 export interface NotificationData {
   type: 'notification';
@@ -14,27 +13,11 @@ export interface NotificationData {
 export class WebSocketServer extends EventEmitter {
   private wss: WSServer;
   private clients: Map<string, any> = new Map();
-  private bonjour: any;
   
   constructor(server: Server, port: number = 8080) {
     super();
     this.wss = new WSServer({ server });
     this.setupWebSocket();
-    this.setupMDNS(port);
-  }
-  
-  private setupMDNS(port: number): void {
-    this.bonjour = new Bonjour.Bonjour();
-    this.bonjour.publish({
-      name: 'Jupiter Notifier',
-      type: 'http',
-      port: port,
-      txt: {
-        service: 'jupiter-notifier',
-        version: '1.0.0'
-      }
-    });
-    console.log(`[mDNS] サービスを公開しました: Jupiter Notifier (port ${port})`);
   }
   
   private setupWebSocket(): void {

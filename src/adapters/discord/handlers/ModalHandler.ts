@@ -26,7 +26,7 @@ export class ModalHandler {
     }
 
     private async handleCustomSetModal(interaction: ModalSubmitInteraction): Promise<void> {
-        const { customSetInteraction } = await import('../../../interactions/customSetInteraction');
-        await customSetInteraction.execute(interaction);
+        const { handleCustomSetModal } = await import('../../../interactions/customSetInteraction');
+        await handleCustomSetModal(interaction);
     }
 }

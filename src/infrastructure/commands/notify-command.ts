@@ -58,4 +58,8 @@ export class NotifyCommand implements Command {
     }
 }
 
+// デフォルトエクスポート（WebSocketサーバーなし）
+export const command = new NotifyCommand();
+
+// WebSocketサーバー付きのファクトリー関数
 export const createNotifyCommand = (wsServer?: WebSocketServer) => new NotifyCommand(wsServer);

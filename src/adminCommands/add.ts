@@ -14,8 +14,17 @@ export async function execute(message: Message, guildId: string) {
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
 
     for (const file of filteredCommandFiles) {
-        const { command } = await import(path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js')));
-        commands.push(command.data.toJSON());
+        try {
+            const module = await import(path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js')));
+            if (module.command?.data) {
+                commands.push(module.command.data.toJSON());
+            } else if (module.createNotifyCommand && file === 'notify-command.ts') {
+                const notifyCommand = module.createNotifyCommand();
+                commands.push(notifyCommand.data.toJSON());
+            }
+        } catch (error) {
+            console.error(`Failed to load command ${file}:`, error);
+        }
     }
 
     const addedCommand = message.content.split(' ')[1];

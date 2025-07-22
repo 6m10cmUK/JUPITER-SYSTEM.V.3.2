@@ -17,8 +17,7 @@ export function createSuccessMessage(source: Message | Interaction, title: strin
         embeds: [
             createEmbed(source, `✅ SUCCESS`, `[JUPITER-SYSTEM ${packageJson.version}] ${title}`, description)
                 .setColor(0x00ff00)
-        ],
-        ephemeral: true
+        ]
     };
 }
 
@@ -27,8 +26,7 @@ export function createErrorMessage(source: Message | Interaction, title: string,
         embeds: [
             createEmbed(source, `❌ ERROR`, `[JUPITER-SYSTEM ${packageJson.version}] ${title}`, description)
                 .setColor(0xff0000)
-        ],
-        ephemeral: true
+        ]
     };
 }
 
@@ -37,7 +35,6 @@ export function createInfoMessage(source: Message | Interaction, title: string, 
         embeds: [
             createEmbed(source, `ℹ️ INFO`, `[JUPITER-SYSTEM ${packageJson.version}] ${title}`, description)
                 .setColor(0x0099ff)
-        ],
-        ephemeral: true
+        ]
     };
 } 

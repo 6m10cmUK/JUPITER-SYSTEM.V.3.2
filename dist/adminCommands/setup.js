@@ -46,8 +46,19 @@ async function execute(message, guildId) {
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('-command.ts'));
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
     for (const file of filteredCommandFiles) {
-        const { command } = await Promise.resolve(`${path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
-        commands.push(command.data.toJSON());
+        try {
+            const module = await Promise.resolve(`${path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'))}`).then(s => __importStar(require(s)));
+            if (module.command?.data) {
+                commands.push(module.command.data.toJSON());
+            }
+            else if (module.createNotifyCommand && file === 'notify-command.ts') {
+                const notifyCommand = module.createNotifyCommand();
+                commands.push(notifyCommand.data.toJSON());
+            }
+        }
+        catch (error) {
+            console.error(`Failed to load command ${file}:`, error);
+        }
     }
     if (message.content.split(' ')[1] === '-help' || message.content.split(' ')[1] === '-h') {
         const embed = (0, messages_1.createInfoMessage)(message, 'HELP INFORMATION', '```\n' +

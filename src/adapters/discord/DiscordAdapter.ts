@@ -56,14 +56,16 @@ export class DiscordAdapter {
                 const filePath = path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'));
                 const module = await import(filePath);
                 
-                // notify-commandの特別処理
-                if (file === 'notify-command.js' && module.createNotifyCommand) {
-                    const command = module.createNotifyCommand(this.wsServer);
-                    this.commands.set(command.data.name, command);
-                    console.log(`Command loaded: ${command.data.name}`);
-                } else if (module.command?.data?.name) {
-                    this.commands.set(module.command.data.name, module.command);
-                    console.log(`Command loaded: ${module.command.data.name}`);
+                if (module.command?.data?.name) {
+                    // notify-commandの特別処理
+                    if (file === 'notify-command.ts' && module.createNotifyCommand && this.wsServer) {
+                        const command = module.createNotifyCommand(this.wsServer);
+                        this.commands.set(command.data.name, command);
+                        console.log(`Command loaded: ${command.data.name} (with WebSocket)`);
+                    } else {
+                        this.commands.set(module.command.data.name, module.command);
+                        console.log(`Command loaded: ${module.command.data.name}`);
+                    }
                 } else {
                     console.warn(`Invalid command definition in ${file}`);
                 }

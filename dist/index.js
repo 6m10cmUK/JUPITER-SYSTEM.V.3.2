@@ -39,6 +39,7 @@ const dotenv = __importStar(require("dotenv"));
 const packageJson = __importStar(require("../package.json"));
 const http_1 = require("http");
 const WebSocketServer_1 = require("./infrastructure/websocket/WebSocketServer");
+const NotificationScheduler_1 = require("./infrastructure/services/NotificationScheduler");
 dotenv.config();
 const client = new discord_js_1.Client({
     intents: [
@@ -59,6 +60,9 @@ const PORT = parseInt(process.env.PORT || '8080');
 const wsServer = new WebSocketServer_1.WebSocketServer(server, PORT);
 // グローバルに設定（スケジューラーで使用）
 global.webSocketServer = wsServer;
+// NotificationSchedulerの初期化（起動時にスケジュールを復元）
+const scheduler = new NotificationScheduler_1.NotificationScheduler(wsServer);
+global.scheduler = scheduler;
 // DiscordAdapterにWebSocketサーバーを渡す
 const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client, wsServer);
 client.once('ready', () => {

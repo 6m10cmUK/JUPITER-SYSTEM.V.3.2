@@ -7,7 +7,7 @@ import * as packageJson from '../../../package.json';
 export class NotifyCommand implements Command {
     data = new SlashCommandBuilder()
         .setName('610')
-        .setDescription('ユピテルに全画面通知を送信')
+        .setDescription('ユピテルのwindowsPCに通知が送信されます。PC前にいたら流石に気付きます。')
         .addStringOption(option =>
             option.setName('message')
                 .setDescription('通知メッセージ')

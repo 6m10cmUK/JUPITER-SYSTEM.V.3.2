@@ -121,7 +121,18 @@ class DiscordAdapter {
     }
     setupInteractionHandler() {
         this.client.on('interactionCreate', async (interaction) => {
-            if (interaction.isChatInputCommand()) {
+            if (interaction.isAutocomplete()) {
+                const command = this.commands.get(interaction.commandName);
+                if (command && 'autocomplete' in command && typeof command.autocomplete === 'function') {
+                    try {
+                        await command.autocomplete(interaction);
+                    }
+                    catch (error) {
+                        console.error(`Autocomplete error for ${interaction.commandName}:`, error);
+                    }
+                }
+            }
+            else if (interaction.isChatInputCommand()) {
                 console.log(`${interaction.guild?.id} ${interaction.user.globalName} ${interaction.commandName}`);
                 const command = this.commands.get(interaction.commandName);
                 if (!command) {

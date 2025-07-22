@@ -1,35 +1,33 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction } from 'discord.js';
 import { Command } from '../../interfaces/Command';
-import { createInfoMessage } from '../../presentation/discord/builders/messages';
+import { generateEmbed } from '../../presentation/discord/builders/embedGenerator';
 import { WebSocketServer } from '../websocket/WebSocketServer';
+import * as packageJson from '../../../package.json';
 
 export class NotifyCommand implements Command {
     data = new SlashCommandBuilder()
         .setName('610')
-        .setDescription('Windows PCに全画面通知を送信します')
+        .setDescription('ユピテルに全画面通知を送信')
         .addStringOption(option =>
             option.setName('message')
                 .setDescription('通知メッセージ')
-                .setRequired(true))
-        .addStringOption(option =>
-            option.setName('title')
-                .setDescription('通知タイトル')
-                .setRequired(false))
-        .addIntegerOption(option =>
-            option.setName('duration')
-                .setDescription('表示秒数（デフォルト: 5秒）')
-                .setRequired(false)
-                .setMinValue(1)
-                .setMaxValue(60)) as SlashCommandBuilder;
+                .setRequired(true)
+                .setAutocomplete(true)) as SlashCommandBuilder;
     
     constructor(private wsServer?: WebSocketServer) {
     }
 
+    async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+        await interaction.respond([
+            { name: 'ユピテルに通知', value: 'ユピテルに通知' }
+        ]);
+    }
+
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
         
-        const message = interaction.options.getString('message', true);
-        const title = interaction.options.getString('title') || 'Discord通知';
-        const duration = interaction.options.getInteger('duration') || 5;
+        const message = interaction.options.getString('message', true) || 'ユピテルに通知';
+        const title = 'Discord通知';
+        const duration = 10; // 10秒固定
         
         if (!this.wsServer) {
             await interaction.reply({
@@ -48,13 +46,12 @@ export class NotifyCommand implements Command {
             sender: interaction.user.username
         });
         
-        const embedMessage = createInfoMessage(
-            interaction,
-            '通知送信完了',
-            `Windows PCに通知を送信しました\n\n**タイトル:** ${title}\n**メッセージ:** ${message}\n**表示時間:** ${duration}秒`
-        );
+        const embed = generateEmbed(interaction)
+            .setTitle(`[JUPITER-SYSTEM ${packageJson.version}] 通知送信完了`)
+            .setDescription(message)
+            .setColor(0x610610);
         
-        await interaction.reply(embedMessage);
+        await interaction.reply({ embeds: [embed] });
     }
 }
 

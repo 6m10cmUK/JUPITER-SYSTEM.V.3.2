@@ -34,6 +34,10 @@ export class WebSocketServer extends EventEmitter {
           
           if (message.type === 'register') {
             ws.send(JSON.stringify({ type: 'registered', clientId }));
+          } else if (message.type === 'dismiss_notification') {
+            // 通知消去メッセージを他の全クライアントに転送
+            console.log(`[WebSocket] 通知消去: ${message.client_type}`);
+            this.broadcastDismiss(message.client_type, clientId);
           }
         } catch (error) {
           console.error('[WebSocket] メッセージパースエラー:', error);
@@ -64,5 +68,19 @@ export class WebSocketServer extends EventEmitter {
   
   private generateClientId(): string {
     return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+  
+  private broadcastDismiss(dismissedBy: string, excludeClientId: string): void {
+    const message = JSON.stringify({
+      type: 'dismiss_notification',
+      dismissed_by: dismissedBy
+    });
+    
+    this.clients.forEach((ws, clientId) => {
+      if (clientId !== excludeClientId && ws.readyState === ws.OPEN) {
+        ws.send(message);
+        console.log(`[WebSocket] 消去通知送信 to ${clientId}`);
+      }
+    });
   }
 }

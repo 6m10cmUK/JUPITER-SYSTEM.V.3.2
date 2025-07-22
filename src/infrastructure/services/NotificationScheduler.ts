@@ -1,87 +1,149 @@
 import * as cron from 'node-cron';
 import { WebSocketServer } from '../websocket/WebSocketServer';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface ScheduledNotification {
   id: string;
-  type: 'once' | 'daily' | 'weekly';
+  type: 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'weekdays';
   cronExpression: string;
   message: string;
   createdBy: string;
   timeString: string;
   task?: cron.ScheduledTask;
+  scheduledDate?: string;
+  repeat: string;
+  interval: number;
+  until?: string;
+  nextExecutionDate?: string;
+}
+
+interface ScheduleOptions {
+  date: Date;
+  message: string;
+  repeat: string;
+  interval: number;
+  until?: Date;
+  createdBy: string;
 }
 
 export class NotificationScheduler {
   private schedules: Map<string, ScheduledNotification> = new Map();
   private webSocketServer: WebSocketServer;
+  private dataFile: string;
 
   constructor(webSocketServer: WebSocketServer) {
     this.webSocketServer = webSocketServer;
-  }
-
-  scheduleOnce(time: string, message: string, createdBy: string): string {
-    const [hours, minutes] = this.parseTime(time);
-    const now = new Date();
-    const scheduledTime = new Date();
-    scheduledTime.setHours(hours, minutes, 0, 0);
-
-    // 過去の時刻の場合は翌日に設定
-    if (scheduledTime <= now) {
-      scheduledTime.setDate(scheduledTime.getDate() + 1);
+    this.dataFile = path.join(process.cwd(), 'data', 'schedules.json');
+    
+    // データディレクトリの作成
+    const dataDir = path.dirname(this.dataFile);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
     }
-
-    const id = uuidv4().substring(0, 8);
-    const schedule: ScheduledNotification = {
-      id,
-      type: 'once',
-      cronExpression: `${minutes} ${hours} ${scheduledTime.getDate()} ${scheduledTime.getMonth() + 1} *`,
-      message,
-      createdBy,
-      timeString: `${scheduledTime.toLocaleDateString('ja-JP')} ${time}`
-    };
-
-    this.addSchedule(schedule);
-    return id;
+    
+    // 保存されたスケジュールを読み込み
+    this.loadSchedules();
   }
 
-  scheduleDaily(time: string, message: string, createdBy: string): string {
-    const [hours, minutes] = this.parseTime(time);
+  addSchedule(options: ScheduleOptions): string {
+    const { date, message, repeat, interval, until, createdBy } = options;
     const id = uuidv4().substring(0, 8);
+    
+    // cronExpressionの生成
+    const cronExpression = this.generateCronExpression(date, repeat, interval);
+    
+    // timeStringの生成
+    const timeString = this.generateTimeString(date, repeat, interval, until);
     
     const schedule: ScheduledNotification = {
       id,
-      type: 'daily',
-      cronExpression: `${minutes} ${hours} * * *`,
+      type: repeat === 'none' ? 'once' : repeat as any,
+      cronExpression,
       message,
       createdBy,
-      timeString: `毎日 ${time}`
+      timeString,
+      scheduledDate: date.toISOString(),
+      repeat,
+      interval,
+      until: until?.toISOString(),
+      nextExecutionDate: date.toISOString()
     };
 
-    this.addSchedule(schedule);
-    return id;
-  }
-
-  scheduleWeekly(dayOfWeek: number, time: string, message: string, createdBy: string): string {
-    const [hours, minutes] = this.parseTime(time);
-    const id = uuidv4().substring(0, 8);
-    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+    this.createCronJob(schedule);
+    this.schedules.set(schedule.id, schedule);
+    this.saveSchedules();
     
-    const schedule: ScheduledNotification = {
-      id,
-      type: 'weekly',
-      cronExpression: `${minutes} ${hours} * * ${dayOfWeek}`,
-      message,
-      createdBy,
-      timeString: `毎週${dayNames[dayOfWeek]}曜日 ${time}`
-    };
-
-    this.addSchedule(schedule);
     return id;
   }
 
-  private addSchedule(schedule: ScheduledNotification): void {
+  private generateCronExpression(date: Date, repeat: string, interval: number): string {
+    const minutes = date.getMinutes();
+    const hours = date.getHours();
+    const dayOfMonth = date.getDate();
+    const month = date.getMonth() + 1;
+    const dayOfWeek = date.getDay();
+    
+    switch (repeat) {
+      case 'none':
+        return `${minutes} ${hours} ${dayOfMonth} ${month} *`;
+      case 'daily':
+        return interval === 1 
+          ? `${minutes} ${hours} * * *`
+          : `${minutes} ${hours} */${interval} * *`;
+      case 'weekly':
+        return `${minutes} ${hours} * * ${dayOfWeek}`;
+      case 'weekdays':
+        return `${minutes} ${hours} * * 1-5`;
+      case 'monthly':
+        return `${minutes} ${hours} ${dayOfMonth} * *`;
+      case 'yearly':
+        return `${minutes} ${hours} ${dayOfMonth} ${month} *`;
+      default:
+        return `${minutes} ${hours} * * *`;
+    }
+  }
+
+  private generateTimeString(date: Date, repeat: string, interval: number, until?: Date): string {
+    const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    const dateStr = date.toLocaleDateString('ja-JP');
+    
+    if (repeat === 'none') {
+      return `${dateStr} ${timeStr}`;
+    }
+    
+    const repeatLabels: Record<string, string> = {
+      'daily': '毎日',
+      'weekdays': '毎週（平日）',
+      'weekly': '毎週',
+      'monthly': '毎月',
+      'yearly': '毎年'
+    };
+    
+    let result = `${repeatLabels[repeat]} ${timeStr}`;
+    if (interval > 1) {
+      result += ` (${interval}回ごと)`;
+    }
+    if (until) {
+      result += ` ～ ${until.toLocaleDateString('ja-JP')}まで`;
+    }
+    
+    return result;
+  }
+
+
+  private createCronJob(schedule: ScheduledNotification): void {
     const task = cron.schedule(schedule.cronExpression, () => {
+      // 終了日のチェック
+      if (schedule.until) {
+        const untilDate = new Date(schedule.until);
+        if (new Date() > untilDate) {
+          this.removeSchedule(schedule.id);
+          return;
+        }
+      }
+
       this.sendNotification(schedule);
 
       // 1回限りのスケジュールは実行後に削除
@@ -94,7 +156,6 @@ export class NotificationScheduler {
     });
 
     schedule.task = task;
-    this.schedules.set(schedule.id, schedule);
   }
 
   private sendNotification(schedule: ScheduledNotification): void {
@@ -114,6 +175,7 @@ export class NotificationScheduler {
     if (schedule) {
       schedule.task?.stop();
       this.schedules.delete(id);
+      this.saveSchedules();
       return true;
     }
     return false;
@@ -126,7 +188,11 @@ export class NotificationScheduler {
       cronExpression: s.cronExpression,
       message: s.message,
       createdBy: s.createdBy,
-      timeString: s.timeString
+      timeString: s.timeString,
+      repeat: s.repeat,
+      interval: s.interval,
+      until: s.until,
+      nextExecutionDate: s.nextExecutionDate
     }));
   }
 
@@ -144,5 +210,54 @@ export class NotificationScheduler {
     }
 
     return [hours, minutes];
+  }
+
+  private saveSchedules(): void {
+    const data = Array.from(this.schedules.values()).map(s => ({
+      id: s.id,
+      type: s.type,
+      cronExpression: s.cronExpression,
+      message: s.message,
+      createdBy: s.createdBy,
+      timeString: s.timeString,
+      scheduledDate: s.scheduledDate,
+      repeat: s.repeat,
+      interval: s.interval,
+      until: s.until,
+      nextExecutionDate: s.nextExecutionDate
+    }));
+
+    fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
+    console.log('[Scheduler] スケジュールを保存しました');
+  }
+
+  private loadSchedules(): void {
+    if (!fs.existsSync(this.dataFile)) {
+      console.log('[Scheduler] スケジュールファイルが存在しません');
+      return;
+    }
+
+    try {
+      const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8'));
+      const now = new Date();
+
+      for (const schedule of data) {
+        // 1回限りのスケジュールが過去の場合はスキップ
+        if (schedule.type === 'once' && schedule.scheduledDate) {
+          const scheduledDate = new Date(schedule.scheduledDate);
+          if (scheduledDate < now) {
+            console.log(`[Scheduler] 過去のスケジュール (ID: ${schedule.id}) をスキップ`);
+            continue;
+          }
+        }
+
+        this.createCronJob(schedule);
+        this.schedules.set(schedule.id, schedule);
+      }
+
+      console.log(`[Scheduler] ${this.schedules.size}件のスケジュールを読み込みました`);
+    } catch (error) {
+      console.error('[Scheduler] スケジュールの読み込みに失敗:', error);
+    }
   }
 }

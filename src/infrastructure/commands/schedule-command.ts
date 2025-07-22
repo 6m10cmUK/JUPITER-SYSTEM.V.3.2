@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, CommandInteraction, ChatInputCommandInteraction } from 'discord.js';
 import { NotificationScheduler } from '../services/NotificationScheduler';
 import { Command } from './types';
 
@@ -10,8 +10,13 @@ export const command: Command = {
     .setDescription('通知のスケジュールを設定します')
     .addSubcommand(subcommand =>
       subcommand
-        .setName('once')
-        .setDescription('1回だけの通知をスケジュール')
+        .setName('add')
+        .setDescription('新しい通知をスケジュール')
+        .addStringOption(option =>
+          option
+            .setName('date')
+            .setDescription('日付 (YYYY-MM-DD形式、例: 2024-12-31) または "today", "tomorrow"')
+            .setRequired(true))
         .addStringOption(option =>
           option
             .setName('time')
@@ -21,49 +26,32 @@ export const command: Command = {
           option
             .setName('message')
             .setDescription('通知メッセージ')
-            .setRequired(true)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('daily')
-        .setDescription('毎日の通知をスケジュール')
-        .addStringOption(option =>
-          option
-            .setName('time')
-            .setDescription('時刻 (HH:MM形式、例: 09:00)')
             .setRequired(true))
         .addStringOption(option =>
           option
-            .setName('message')
-            .setDescription('通知メッセージ')
-            .setRequired(true)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('weekly')
-        .setDescription('毎週の通知をスケジュール')
-        .addStringOption(option =>
-          option
-            .setName('day')
-            .setDescription('曜日')
-            .setRequired(true)
+            .setName('repeat')
+            .setDescription('繰り返し設定')
+            .setRequired(false)
             .addChoices(
-              { name: '月曜日', value: '1' },
-              { name: '火曜日', value: '2' },
-              { name: '水曜日', value: '3' },
-              { name: '木曜日', value: '4' },
-              { name: '金曜日', value: '5' },
-              { name: '土曜日', value: '6' },
-              { name: '日曜日', value: '0' }
+              { name: '繰り返しなし', value: 'none' },
+              { name: '毎日', value: 'daily' },
+              { name: '毎週（平日）', value: 'weekdays' },
+              { name: '毎週', value: 'weekly' },
+              { name: '毎月', value: 'monthly' },
+              { name: '毎年', value: 'yearly' }
             ))
+        .addIntegerOption(option =>
+          option
+            .setName('interval')
+            .setDescription('繰り返し間隔（例: 2を指定すると「2日ごと」）')
+            .setRequired(false)
+            .setMinValue(1)
+            .setMaxValue(365))
         .addStringOption(option =>
           option
-            .setName('time')
-            .setDescription('時刻 (HH:MM形式、例: 10:00)')
-            .setRequired(true))
-        .addStringOption(option =>
-          option
-            .setName('message')
-            .setDescription('通知メッセージ')
-            .setRequired(true)))
+            .setName('until')
+            .setDescription('終了日 (YYYY-MM-DD形式) - 繰り返しの終了日')
+            .setRequired(false)))
     .addSubcommand(subcommand =>
       subcommand
         .setName('list')
@@ -79,62 +67,87 @@ export const command: Command = {
             .setRequired(true))),
 
   async execute(interaction: CommandInteraction) {
+    if (!interaction.isChatInputCommand()) return;
+    
     if (!scheduler) {
-      const webSocketServer = (global as any).webSocketServer;
-      scheduler = new NotificationScheduler(webSocketServer);
+      scheduler = (global as any).scheduler || new NotificationScheduler((global as any).webSocketServer);
     }
 
     const subcommand = interaction.options.getSubcommand();
+    
+    if (!scheduler) {
+      await interaction.reply({
+        content: '❌ スケジューラーの初期化に失敗しました',
+        ephemeral: true
+      });
+      return;
+    }
 
     switch (subcommand) {
-      case 'once': {
+      case 'add': {
+        const dateStr = interaction.options.getString('date', true);
         const time = interaction.options.getString('time', true);
         const message = interaction.options.getString('message', true);
+        const repeat = interaction.options.getString('repeat') || 'none';
+        const interval = interaction.options.getInteger('interval') || 1;
+        const until = interaction.options.getString('until');
         
         try {
-          const id = scheduler.scheduleOnce(time, message, interaction.user.username);
-          await interaction.reply({
-            content: `✅ 通知をスケジュールしました\nID: ${id}\n時刻: ${time}\nメッセージ: ${message}`,
-            ephemeral: true
+          // 日付の解析
+          let date: Date;
+          const today = new Date();
+          if (dateStr.toLowerCase() === 'today') {
+            date = today;
+          } else if (dateStr.toLowerCase() === 'tomorrow') {
+            date = new Date(today);
+            date.setDate(date.getDate() + 1);
+          } else {
+            date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+              throw new Error('無効な日付形式です');
+            }
+          }
+          
+          // 時刻の設定
+          const [hours, minutes] = time.split(':').map(Number);
+          date.setHours(hours, minutes, 0, 0);
+          
+          // スケジュールの作成
+          const id = scheduler.addSchedule({
+            date,
+            message,
+            repeat,
+            interval,
+            until: until ? new Date(until) : undefined,
+            createdBy: interaction.user.username
           });
-        } catch (error) {
+          
+          // 確認メッセージの作成
+          let confirmMessage = `✅ 通知をスケジュールしました\n`;
+          confirmMessage += `ID: ${id}\n`;
+          confirmMessage += `日時: ${date.toLocaleDateString('ja-JP')} ${time}\n`;
+          confirmMessage += `メッセージ: ${message}\n`;
+          
+          if (repeat !== 'none') {
+            const repeatLabels: Record<string, string> = {
+              'daily': '毎日',
+              'weekdays': '毎週（平日）',
+              'weekly': '毎週',
+              'monthly': '毎月',
+              'yearly': '毎年'
+            };
+            confirmMessage += `繰り返し: ${repeatLabels[repeat]}`;
+            if (interval > 1) {
+              confirmMessage += ` (${interval}回ごと)`;
+            }
+            confirmMessage += '\n';
+            if (until) {
+              confirmMessage += `終了日: ${new Date(until).toLocaleDateString('ja-JP')}\n`;
+            }
+          }
+          
           await interaction.reply({
-            content: `❌ エラー: ${error instanceof Error ? error.message : String(error)}`,
-            ephemeral: true
-          });
-        }
-        break;
-      }
-
-      case 'daily': {
-        const time = interaction.options.getString('time', true);
-        const message = interaction.options.getString('message', true);
-        
-        try {
-          const id = scheduler.scheduleDaily(time, message, interaction.user.username);
-          await interaction.reply({
-            content: `✅ 毎日の通知をスケジュールしました\nID: ${id}\n時刻: 毎日 ${time}\nメッセージ: ${message}`,
-            ephemeral: true
-          });
-        } catch (error) {
-          await interaction.reply({
-            content: `❌ エラー: ${error instanceof Error ? error.message : String(error)}`,
-            ephemeral: true
-          });
-        }
-        break;
-      }
-
-      case 'weekly': {
-        const day = interaction.options.getString('day', true);
-        const time = interaction.options.getString('time', true);
-        const message = interaction.options.getString('message', true);
-        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-        
-        try {
-          const id = scheduler.scheduleWeekly(parseInt(day), time, message, interaction.user.username);
-          await interaction.reply({
-            content: `✅ 毎週の通知をスケジュールしました\nID: ${id}\n時刻: 毎週${dayNames[parseInt(day)]}曜日 ${time}\nメッセージ: ${message}`,
+            content: confirmMessage,
             ephemeral: true
           });
         } catch (error) {

@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import * as packageJson from '../package.json';
 import { createServer } from 'http';
 import { WebSocketServer } from './infrastructure/websocket/WebSocketServer';
+import { NotificationScheduler } from './infrastructure/services/NotificationScheduler';
 dotenv.config();
 
 const client = new Client({ 
@@ -29,6 +30,10 @@ const wsServer = new WebSocketServer(server, PORT);
 
 // グローバルに設定（スケジューラーで使用）
 (global as any).webSocketServer = wsServer;
+
+// NotificationSchedulerの初期化（起動時にスケジュールを復元）
+const scheduler = new NotificationScheduler(wsServer);
+(global as any).scheduler = scheduler;
 
 // DiscordAdapterにWebSocketサーバーを渡す
 const discordAdapter = new DiscordAdapter(client, wsServer);

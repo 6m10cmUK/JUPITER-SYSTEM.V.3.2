@@ -27,6 +27,9 @@ const server = createServer();
 const PORT = parseInt(process.env.PORT || '8080');
 const wsServer = new WebSocketServer(server, PORT);
 
+// グローバルに設定（スケジューラーで使用）
+(global as any).webSocketServer = wsServer;
+
 // DiscordAdapterにWebSocketサーバーを渡す
 const discordAdapter = new DiscordAdapter(client, wsServer);
 

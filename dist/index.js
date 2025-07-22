@@ -57,6 +57,8 @@ process.on('unhandledRejection', error => {
 const server = (0, http_1.createServer)();
 const PORT = parseInt(process.env.PORT || '8080');
 const wsServer = new WebSocketServer_1.WebSocketServer(server, PORT);
+// グローバルに設定（スケジューラーで使用）
+global.webSocketServer = wsServer;
 // DiscordAdapterにWebSocketサーバーを渡す
 const discordAdapter = new DiscordAdapter_1.DiscordAdapter(client, wsServer);
 client.once('ready', () => {

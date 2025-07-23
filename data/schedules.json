@@ -10,5 +10,17 @@
     "repeat": "weekdays",
     "interval": 1,
     "nextExecutionDate": "2025-07-23T23:30:00.000Z"
+  },
+  {
+    "id": "7f656a91",
+    "type": "weekdays",
+    "cronExpression": "30 8 * * 1-5",
+    "message": "おきろ",
+    "createdBy": "6m10cm",
+    "timeString": "毎週（平日） 08:10",
+    "scheduledDate": "2025-07-23T23:30:00.000Z",
+    "repeat": "weekdays",
+    "interval": 1,
+    "nextExecutionDate": "2025-07-23T23:30:00.000Z"
   }
 ]

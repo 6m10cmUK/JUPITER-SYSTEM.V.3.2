@@ -10,10 +10,12 @@ import {
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
+  ComponentType,
+  EmbedBuilder
 } from 'discord.js';
 import { NotificationScheduler } from '../services/NotificationScheduler';
 import { Command } from './types';
+import { generateEmbed } from '../../presentation/discord/builders/embedGenerator';
 
 let scheduler: NotificationScheduler | null = null;
 
@@ -28,12 +30,12 @@ export const command: Command = {
         .addStringOption(option =>
           option
             .setName('date')
-            .setDescription('日付 (YYYY-MM-DD形式、例: 2024-12-31) または "today", "tomorrow"')
+            .setDescription('日付 (YYYY-MM-DD, YYYYMMDD, today, tomorrow)')
             .setRequired(true))
         .addStringOption(option =>
           option
             .setName('time')
-            .setDescription('時刻 (HH:MM形式、例: 14:30)')
+            .setDescription('時刻 (HH:MM または HHMM、例: 14:30, 1430)')
             .setRequired(true))
         .addStringOption(option =>
           option
@@ -65,10 +67,6 @@ export const command: Command = {
             .setName('until')
             .setDescription('終了日 (YYYY-MM-DD形式) - 繰り返しの終了日')
             .setRequired(false)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('quick')
-        .setDescription('モーダルで簡単に通知をスケジュール'))
     .addSubcommand(subcommand =>
       subcommand
         .setName('list')
@@ -113,20 +111,49 @@ export const command: Command = {
           // 日付の解析
           let date: Date;
           const today = new Date();
-          if (dateStr.toLowerCase() === 'today') {
+          const dateStrLower = dateStr.toLowerCase();
+          
+          if (dateStrLower === 'today') {
             date = today;
-          } else if (dateStr.toLowerCase() === 'tomorrow') {
+          } else if (dateStrLower === 'tomorrow') {
             date = new Date(today);
             date.setDate(date.getDate() + 1);
-          } else {
+          } else if (/^\d{8}$/.test(dateStr)) {
+            // YYYYMMDD形式
+            const year = parseInt(dateStr.substring(0, 4));
+            const month = parseInt(dateStr.substring(4, 6)) - 1; // 月は0ベース
+            const day = parseInt(dateStr.substring(6, 8));
+            date = new Date(year, month, day);
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            // YYYY-MM-DD形式
             date = new Date(dateStr);
-            if (isNaN(date.getTime())) {
-              throw new Error('無効な日付形式です');
-            }
+          } else {
+            // その他の形式を試す
+            date = new Date(dateStr);
+          }
+          
+          if (isNaN(date.getTime())) {
+            throw new Error('無効な日付形式です。YYYY-MM-DD、YYYYMMDD、today、tomorrow のいずれかを使用してください');
           }
           
           // 時刻の設定
-          const [hours, minutes] = time.split(':').map(Number);
+          let hours: number, minutes: number;
+          
+          if (/^\d{4}$/.test(time)) {
+            // HHMM形式
+            hours = parseInt(time.substring(0, 2));
+            minutes = parseInt(time.substring(2, 4));
+          } else if (/^\d{1,2}:\d{2}$/.test(time)) {
+            // HH:MM形式
+            [hours, minutes] = time.split(':').map(Number);
+          } else {
+            throw new Error('無効な時刻形式です。HH:MM または HHMM を使用してください');
+          }
+          
+          if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+            throw new Error('時刻の範囲が不正です');
+          }
+          
           date.setHours(hours, minutes, 0, 0);
           
           // スケジュールの作成
@@ -140,36 +167,40 @@ export const command: Command = {
           });
           
           // 確認メッセージの作成
-          let confirmMessage = `✅ 通知をスケジュールしました\n`;
-          confirmMessage += `ID: ${id}\n`;
-          confirmMessage += `日時: ${date.toLocaleDateString('ja-JP')} ${time}\n`;
-          confirmMessage += `メッセージ: ${message}\n`;
+          const repeatLabels: Record<string, string> = {
+            'none': 'なし',
+            'daily': '毎日',
+            'weekdays': '毎週（平日）',
+            'weekly': '毎週',
+            'monthly': '毎月',
+            'yearly': '毎年'
+          };
           
-          if (repeat !== 'none') {
-            const repeatLabels: Record<string, string> = {
-              'daily': '毎日',
-              'weekdays': '毎週（平日）',
-              'weekly': '毎週',
-              'monthly': '毎月',
-              'yearly': '毎年'
-            };
-            confirmMessage += `繰り返し: ${repeatLabels[repeat]}`;
-            if (interval > 1) {
-              confirmMessage += ` (${interval}回ごと)`;
-            }
-            confirmMessage += '\n';
-            if (until) {
-              confirmMessage += `終了日: ${new Date(until).toLocaleDateString('ja-JP')}\n`;
-            }
+          const embed = generateEmbed(interaction)
+            .setTitle('✅ 通知スケジュール設定完了')
+            .setDescription('新しい通知がスケジュールされました')
+            .addFields([
+              { name: 'ID', value: id, inline: true },
+              { name: '日時', value: `${date.toLocaleDateString('ja-JP')} ${time}`, inline: true },
+              { name: '繰り返し', value: repeatLabels[repeat] + (interval > 1 ? ` (${interval}回ごと)` : ''), inline: true },
+              { name: 'メッセージ', value: message }
+            ]);
+          
+          if (until) {
+            embed.addFields({ name: '終了日', value: new Date(until).toLocaleDateString('ja-JP'), inline: true });
           }
           
           await interaction.reply({
-            content: confirmMessage,
+            embeds: [embed],
             ephemeral: true
           });
         } catch (error) {
+          const errorEmbed = generateEmbed(interaction)
+            .setTitle('❌ エラーが発生しました')
+            .setDescription(error instanceof Error ? error.message : String(error));
+          
           await interaction.reply({
-            content: `❌ エラー: ${error instanceof Error ? error.message : String(error)}`,
+            embeds: [errorEmbed],
             ephemeral: true
           });
         }
@@ -179,16 +210,29 @@ export const command: Command = {
       case 'list': {
         const schedules = scheduler.listSchedules();
         if (schedules.length === 0) {
+          const embed = generateEmbed(interaction)
+            .setTitle('📅 スケジュール一覧')
+            .setDescription('スケジュールされた通知はありません');
+          
           await interaction.reply({
-            content: 'スケジュールされた通知はありません',
+            embeds: [embed],
             ephemeral: true
           });
         } else {
-          const list = schedules.map(s => 
-            `**ID: ${s.id}**\n種類: ${s.type}\n時刻: ${s.timeString}\nメッセージ: ${s.message}\n作成者: ${s.createdBy}`
-          ).join('\n\n');
+          const embed = generateEmbed(interaction)
+            .setTitle('📅 スケジュール一覧')
+            .setDescription(`現在 ${schedules.length} 件のスケジュールが登録されています`);
+          
+          schedules.forEach(s => {
+            embed.addFields({
+              name: `ID: ${s.id} - ${s.timeString}`,
+              value: `メッセージ: ${s.message}\n作成者: ${s.createdBy}`,
+              inline: false
+            });
+          });
+          
           await interaction.reply({
-            content: `📅 **スケジュール一覧**\n\n${list}`,
+            embeds: [embed],
             ephemeral: true
           });
         }
@@ -200,155 +244,27 @@ export const command: Command = {
         const removed = scheduler.removeSchedule(id);
         
         if (removed) {
+          const embed = generateEmbed(interaction)
+            .setTitle('✅ スケジュール削除完了')
+            .setDescription(`スケジュール (ID: ${id}) を削除しました`);
+          
           await interaction.reply({
-            content: `✅ スケジュール (ID: ${id}) を削除しました`,
+            embeds: [embed],
             ephemeral: true
           });
         } else {
-          await interaction.reply({
-            content: `❌ スケジュール (ID: ${id}) が見つかりません`,
-            ephemeral: true
-          });
-        }
-        break;
-      }
-
-      case 'quick': {
-        // モーダルの作成
-        const modal = new ModalBuilder()
-          .setCustomId('schedule_modal')
-          .setTitle('通知のスケジュール設定');
-
-        // 日付入力
-        const dateInput = new TextInputBuilder()
-          .setCustomId('date_input')
-          .setLabel('日付')
-          .setPlaceholder('YYYY-MM-DD または today, tomorrow')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setValue(new Date().toISOString().split('T')[0]);
-
-        // 時刻入力
-        const timeInput = new TextInputBuilder()
-          .setCustomId('time_input')
-          .setLabel('時刻')
-          .setPlaceholder('HH:MM (例: 14:30)')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setValue('12:00');
-
-        // メッセージ入力
-        const messageInput = new TextInputBuilder()
-          .setCustomId('message_input')
-          .setLabel('通知メッセージ')
-          .setPlaceholder('通知したい内容を入力')
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(true);
-
-        // 繰り返し設定（オプション）
-        const repeatInput = new TextInputBuilder()
-          .setCustomId('repeat_input')
-          .setLabel('繰り返し設定（オプション）')
-          .setPlaceholder('none, daily, weekdays, weekly, monthly, yearly')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setValue('none');
-
-        // 終了日（オプション）
-        const untilInput = new TextInputBuilder()
-          .setCustomId('until_input')
-          .setLabel('終了日（オプション）')
-          .setPlaceholder('YYYY-MM-DD (繰り返しの終了日)')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false);
-
-        // モーダルに追加
-        modal.addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(dateInput),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(timeInput),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(messageInput),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(repeatInput),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(untilInput)
-        );
-
-        await interaction.showModal(modal);
-        
-        // モーダルの送信を待つ
-        try {
-          const modalSubmit = await interaction.awaitModalSubmit({
-            time: 300000, // 5分
-            filter: i => i.customId === 'schedule_modal' && i.user.id === interaction.user.id
-          });
-
-          const dateStr = modalSubmit.fields.getTextInputValue('date_input');
-          const time = modalSubmit.fields.getTextInputValue('time_input');
-          const message = modalSubmit.fields.getTextInputValue('message_input');
-          const repeat = modalSubmit.fields.getTextInputValue('repeat_input') || 'none';
-          const until = modalSubmit.fields.getTextInputValue('until_input');
-
-          // 日付の解析
-          let date: Date;
-          const today = new Date();
-          if (dateStr.toLowerCase() === 'today') {
-            date = today;
-          } else if (dateStr.toLowerCase() === 'tomorrow') {
-            date = new Date(today);
-            date.setDate(date.getDate() + 1);
-          } else {
-            date = new Date(dateStr);
-            if (isNaN(date.getTime())) {
-              await modalSubmit.reply({
-                content: '❌ 無効な日付形式です',
-                ephemeral: true
-              });
-              return;
-            }
-          }
-
-          // 時刻の設定
-          const [hours, minutes] = time.split(':').map(Number);
-          date.setHours(hours, minutes, 0, 0);
-
-          // スケジュールの作成
-          const id = scheduler.addSchedule({
-            date,
-            message,
-            repeat,
-            interval: 1,
-            until: until ? new Date(until) : undefined,
-            createdBy: modalSubmit.user.username
-          });
-
-          // 確認メッセージ
-          let confirmMessage = `✅ 通知をスケジュールしました\n`;
-          confirmMessage += `ID: ${id}\n`;
-          confirmMessage += `日時: ${date.toLocaleDateString('ja-JP')} ${time}\n`;
-          confirmMessage += `メッセージ: ${message}\n`;
+          const embed = generateEmbed(interaction)
+            .setTitle('❌ エラー')
+            .setDescription(`スケジュール (ID: ${id}) が見つかりません`);
           
-          if (repeat !== 'none') {
-            const repeatLabels: Record<string, string> = {
-              'daily': '毎日',
-              'weekdays': '毎週（平日）',
-              'weekly': '毎週',
-              'monthly': '毎月',
-              'yearly': '毎年'
-            };
-            confirmMessage += `繰り返し: ${repeatLabels[repeat] || repeat}\n`;
-            if (until) {
-              confirmMessage += `終了日: ${new Date(until).toLocaleDateString('ja-JP')}\n`;
-            }
-          }
-
-          await modalSubmit.reply({
-            content: confirmMessage,
+          await interaction.reply({
+            embeds: [embed],
             ephemeral: true
           });
-
-        } catch (error) {
-          console.error('Modal timeout or error:', error);
         }
         break;
       }
+
     }
   }
 };

@@ -97,26 +97,11 @@ export const command: Command = {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      // 曜日の配列
-      const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const weekdaysJa = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
-      
       // オートコンプリートの選択肢
       const choices = [
         { name: `今日 (${today.toLocaleDateString('ja-JP')})`, value: 'today' },
         { name: `明日 (${tomorrow.toLocaleDateString('ja-JP')})`, value: 'tomorrow' }
       ];
-      
-      // 今後7日間の日付を追加
-      for (let i = 2; i <= 7; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() + i);
-        const dayIndex = date.getDay();
-        choices.push({
-          name: `${weekdaysJa[dayIndex]} (${date.toLocaleDateString('ja-JP')})`,
-          value: date.toISOString().split('T')[0]
-        });
-      }
       
       // フィルタリング
       const filtered = choices.filter(choice => 

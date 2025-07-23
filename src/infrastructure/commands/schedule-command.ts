@@ -11,7 +11,8 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
-  EmbedBuilder
+  EmbedBuilder,
+  AutocompleteInteraction
 } from 'discord.js';
 import { NotificationScheduler } from '../services/NotificationScheduler';
 import { Command } from './types';
@@ -30,12 +31,13 @@ export const command: Command = {
         .addStringOption(option =>
           option
             .setName('date')
-            .setDescription('日付 (YYYY-MM-DD, YYYYMMDD, today, tomorrow)')
-            .setRequired(true))
+            .setDescription('日付を選択または入力 (YYYY-MM-DD)')
+            .setRequired(true)
+            .setAutocomplete(true))
         .addStringOption(option =>
           option
             .setName('time')
-            .setDescription('時刻 (HH:MM または HHMM、例: 14:30, 1430)')
+            .setDescription('時刻 (HH:MM)')
             .setRequired(true))
         .addStringOption(option =>
           option
@@ -78,8 +80,68 @@ export const command: Command = {
         .addStringOption(option =>
           option
             .setName('id')
-            .setDescription('スケジュールID')
-            .setRequired(true))),
+            .setDescription('スケジュールIDを選択')
+            .setRequired(true)
+            .setAutocomplete(true))),
+
+  async autocomplete(interaction: AutocompleteInteraction) {
+    if (!scheduler) {
+      scheduler = (global as any).scheduler || new NotificationScheduler((global as any).webSocketServer);
+    }
+    
+    const focusedOption = interaction.options.getFocused(true);
+    
+    if (focusedOption.name === 'date') {
+      const value = focusedOption.value.toLowerCase();
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      // 曜日の配列
+      const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const weekdaysJa = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+      
+      // オートコンプリートの選択肢
+      const choices = [
+        { name: `今日 (${today.toLocaleDateString('ja-JP')})`, value: 'today' },
+        { name: `明日 (${tomorrow.toLocaleDateString('ja-JP')})`, value: 'tomorrow' }
+      ];
+      
+      // 今後7日間の日付を追加
+      for (let i = 2; i <= 7; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+        const dayIndex = date.getDay();
+        choices.push({
+          name: `${weekdaysJa[dayIndex]} (${date.toLocaleDateString('ja-JP')})`,
+          value: date.toISOString().split('T')[0]
+        });
+      }
+      
+      // フィルタリング
+      const filtered = choices.filter(choice => 
+        choice.name.toLowerCase().includes(value) || 
+        choice.value.toLowerCase().includes(value)
+      );
+      
+      await interaction.respond(filtered.slice(0, 25));
+    } else if (focusedOption.name === 'id' && scheduler) {
+      const schedules = scheduler.listSchedules();
+      const value = focusedOption.value.toLowerCase();
+      
+      const choices = schedules.map(s => ({
+        name: `${s.id} - ${s.timeString} - ${s.message.substring(0, 50)}${s.message.length > 50 ? '...' : ''}`,
+        value: s.id
+      }));
+      
+      const filtered = choices.filter(choice => 
+        choice.name.toLowerCase().includes(value) || 
+        choice.value.toLowerCase().includes(value)
+      );
+      
+      await interaction.respond(filtered.slice(0, 25));
+    }
+  },
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;

@@ -11,6 +11,8 @@ export interface NotificationData {
   source?: string;
   app?: string;
   is_slack?: boolean;
+  notification_type?: 'MENTION' | 'DM' | 'THREAD' | 'MESSAGE';
+  timestamp?: string;
 }
 
 export class WebSocketServer extends EventEmitter {
@@ -43,6 +45,27 @@ export class WebSocketServer extends EventEmitter {
             console.log(`[WebSocket] 通知消去受信: ${message.client_type} from ${clientId}`);
             console.log(`[WebSocket] 現在の接続クライアント数: ${this.clients.size}`);
             this.broadcastDismiss(message.client_type, clientId);
+          } else if (message.type === 'notification' && message.source === 'windows_notification_listener') {
+            // Windows通知リスナーからの通知を処理
+            console.log(`[WebSocket] Windows通知リスナーから通知受信:`, {
+              app: message.app,
+              notification_type: message.notification_type,
+              title: message.title
+            });
+            
+            // 全クライアントに通知を転送
+            const notificationData: NotificationData = {
+              type: 'notification',
+              title: message.title,
+              message: message.message,
+              app: message.app,
+              notification_type: message.notification_type,
+              timestamp: message.timestamp,
+              source: 'windows_notification_listener',
+              is_slack: message.app?.toLowerCase() === 'slack'
+            };
+            
+            this.sendNotification(notificationData);
           }
         } catch (error) {
           console.error('[WebSocket] メッセージパースエラー:', error);
@@ -64,8 +87,32 @@ export class WebSocketServer extends EventEmitter {
     // Slack通知の場合は特別な処理
     if (data.is_slack || data.app?.toLowerCase().includes('slack')) {
       console.log(`[WebSocket] Slack通知を検出: ${data.title}`);
-      // Slack通知用の特別なフォーマット
-      data.title = `💬 ${data.title}`;
+      
+      // notification_typeに応じたプレフィックスを追加
+      let prefix = '💬';
+      if (data.notification_type) {
+        switch (data.notification_type) {
+          case 'MENTION':
+            prefix = '📢';
+            break;
+          case 'DM':
+            prefix = '✉️';
+            break;
+          case 'THREAD':
+            prefix = '🧵';
+            break;
+          case 'MESSAGE':
+            prefix = '💬';
+            break;
+        }
+      }
+      
+      data.title = `${prefix} ${data.title}`;
+    }
+    
+    // Discord通知の場合の処理
+    if (data.app?.toLowerCase().includes('discord')) {
+      data.title = `🎮 ${data.title}`;
     }
     
     const message = JSON.stringify(data);
@@ -73,7 +120,7 @@ export class WebSocketServer extends EventEmitter {
     this.clients.forEach((ws, clientId) => {
       if (ws.readyState === ws.OPEN) {
         ws.send(message);
-        console.log(`[WebSocket] 通知送信 to ${clientId}`);
+        console.log(`[WebSocket] 通知送信 to ${clientId}: ${data.app} - ${data.notification_type || 'N/A'}`);
       }
     });
   }

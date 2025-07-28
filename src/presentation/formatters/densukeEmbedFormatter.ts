@@ -113,7 +113,7 @@ export class DensukeEmbedFormatter {
     }
 
     const filterText = filter === 'holidays_only' ? '土日祝のみ' : '全て';
-    embed.setFooter({ text: `フィルター: ${filterText}` });
+    embed.setFooter({ text: `フィルター: ${filterText} | 伝助: https://densuke.biz/` });
 
     return embed;
   }

@@ -4,11 +4,8 @@ import { createErrorMessage } from '../presentation/discord/builders/messages';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
-import { StatusServiceFactory } from '../domain/services/status/StatusServiceFactory';
-import { DiceService } from '../domain/services/DiceService';
-import { DiceExpression } from '../domain/value-objects/DiceExpression';
-import { extractDiceExpression } from '../shared/utils/diceExpressionUtils';
 import { escapeDiscordMarkdown } from '../shared/utils/discordUtils';
+import { processReroll } from '../shared/utils/rerollProcessor';
 
 export const prefix = 'reroll';
 
@@ -58,27 +55,8 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     // 選択されたステータスを振り直し
     const selectedStat = interaction.values[0].toUpperCase(); // 大文字に変換
     
-    let rerollResult: { value: number; details: string };
-    
-    // ステータス詳細からダイス式を抽出
-    const currentDetails = statusData.primaryStatsDetails[selectedStat];
-    const customDiceExpression = extractDiceExpression(currentDetails);
-    
-    if (customDiceExpression) {
-        // カスタムダイス式が設定されている場合はそれを使用
-        const diceService = new DiceService();
-        const expression = new DiceExpression(customDiceExpression);
-        const roll = diceService.roll(expression);
-        
-        rerollResult = {
-            value: roll.getTotal(),
-            details: roll.getDetailedExpression().replace(customDiceExpression + ' ＞ ', '') // ダイス式部分を除去
-        };
-    } else {
-        // 通常の振り直し
-        const statusService = StatusServiceFactory.create(statusData.version);
-        rerollResult = statusService.rollIndividualStat(selectedStat);
-    }
+    // 振り直し処理を実行
+    const rerollResult = processReroll(selectedStat, statusData, messageId);
 
     // 現在のステータス値を取得
     const currentValue = statusData.primaryStats[selectedStat];
@@ -86,7 +64,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     // 振り直し結果の表示（マークダウンをエスケープ）
     const escapedDetails = escapeDiscordMarkdown(rerollResult.details);
     const rerollEmbed = generateEmbed(interaction)
-        .setTitle(`${selectedStat}: ${currentValue} ＞＞＞ ${rerollResult.value} (${escapedDetails})`);
+        .setTitle(`${selectedStat}: ${currentValue} ＞＞＞ ${rerollResult.value} ${escapedDetails}`);
     
     // 振り直し回数はまだ増やさない（成功確認後に増やす）
     const newRerollCount = statusData.rerollCount + 1;

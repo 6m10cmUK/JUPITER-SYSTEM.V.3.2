@@ -10,6 +10,7 @@ import { createErrorMessage } from '../presentation/discord/builders/messages';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
+import { processNameInput } from '../shared/utils/nameProcessor';
 
 export const prefix = 'changeName';
 
@@ -80,8 +81,19 @@ export async function handleNameChangeModal(interaction: ModalSubmitInteraction)
         return;
     }
 
+    // 名前入力の処理
+    const nameResult = processNameInput(newName, messageId);
+    
+    // 更新が不要な場合は終了
+    if (!nameResult.shouldUpdate) {
+        await interaction.deferUpdate();
+        return;
+    }
+    
+    const actualName = nameResult.actualName;
+    
     // 新しい名前を設定
-    statusData.characterName = newName;
+    statusData.characterName = actualName;
     statusData.messageId = messageId;
     statusData.userId = userId;
 

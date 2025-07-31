@@ -24,9 +24,9 @@ export abstract class BaseStatusService implements StatusVersion {
         // 修正値がある場合は含める
         let details: string;
         if (formula.modifier > 0) {
-            details = `${result.rolls.join(',')})+${formula.modifier}`;
+            details = `(${result.rolls.join(',')})+${formula.modifier}`;
         } else {
-            details = result.rolls.join(',');
+            details = `(${result.rolls.join(',')})`;
         }
         
         return {

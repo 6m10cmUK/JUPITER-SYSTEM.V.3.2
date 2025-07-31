@@ -8,11 +8,8 @@ const messages_1 = require("../presentation/discord/builders/messages");
 const StatusEmbedParser_1 = require("../presentation/parsers/StatusEmbedParser");
 const StatusEmbedFormatter_1 = require("../presentation/formatters/StatusEmbedFormatter");
 const StatusComponentBuilder_1 = require("../presentation/discord/builders/StatusComponentBuilder");
-const StatusServiceFactory_1 = require("../domain/services/status/StatusServiceFactory");
-const DiceService_1 = require("../domain/services/DiceService");
-const DiceExpression_1 = require("../domain/value-objects/DiceExpression");
-const diceExpressionUtils_1 = require("../shared/utils/diceExpressionUtils");
 const discordUtils_1 = require("../shared/utils/discordUtils");
+const rerollProcessor_1 = require("../shared/utils/rerollProcessor");
 exports.prefix = 'reroll';
 async function execute(interaction) {
     const [_, messageId, userId] = interaction.customId.split(':');
@@ -50,31 +47,14 @@ async function execute(interaction) {
     statusData.userId = userId;
     // 選択されたステータスを振り直し
     const selectedStat = interaction.values[0].toUpperCase(); // 大文字に変換
-    let rerollResult;
-    // ステータス詳細からダイス式を抽出
-    const currentDetails = statusData.primaryStatsDetails[selectedStat];
-    const customDiceExpression = (0, diceExpressionUtils_1.extractDiceExpression)(currentDetails);
-    if (customDiceExpression) {
-        // カスタムダイス式が設定されている場合はそれを使用
-        const diceService = new DiceService_1.DiceService();
-        const expression = new DiceExpression_1.DiceExpression(customDiceExpression);
-        const roll = diceService.roll(expression);
-        rerollResult = {
-            value: roll.getTotal(),
-            details: roll.getDetailedExpression().replace(customDiceExpression + ' ＞ ', '') // ダイス式部分を除去
-        };
-    }
-    else {
-        // 通常の振り直し
-        const statusService = StatusServiceFactory_1.StatusServiceFactory.create(statusData.version);
-        rerollResult = statusService.rollIndividualStat(selectedStat);
-    }
+    // 振り直し処理を実行
+    const rerollResult = (0, rerollProcessor_1.processReroll)(selectedStat, statusData, messageId);
     // 現在のステータス値を取得
     const currentValue = statusData.primaryStats[selectedStat];
     // 振り直し結果の表示（マークダウンをエスケープ）
     const escapedDetails = (0, discordUtils_1.escapeDiscordMarkdown)(rerollResult.details);
     const rerollEmbed = (0, embedGenerator_1.generateEmbed)(interaction)
-        .setTitle(`${selectedStat}: ${currentValue} ＞＞＞ ${rerollResult.value} (${escapedDetails})`);
+        .setTitle(`${selectedStat}: ${currentValue} ＞＞＞ ${rerollResult.value} ${escapedDetails}`);
     // 振り直し回数はまだ増やさない（成功確認後に増やす）
     const newRerollCount = statusData.rerollCount + 1;
     const components = new discord_js_1.ActionRowBuilder()

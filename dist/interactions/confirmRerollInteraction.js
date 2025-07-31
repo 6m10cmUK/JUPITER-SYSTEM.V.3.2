@@ -57,11 +57,11 @@ async function execute(interaction) {
     if (customDiceExpression) {
         const escapedDiceExpression = (0, discordUtils_1.escapeDiscordMarkdown)(customDiceExpression);
         const escapedDetails = (0, discordUtils_1.escapeDiscordMarkdown)(details);
-        statusData.primaryStatsDetails[statType] = `${escapedDiceExpression}: (${escapedDetails})`;
+        statusData.primaryStatsDetails[statType] = `${escapedDiceExpression}: ${escapedDetails}`;
     }
     else {
         const escapedDetails = (0, discordUtils_1.escapeDiscordMarkdown)(details);
-        statusData.primaryStatsDetails[statType] = `(${escapedDetails})`;
+        statusData.primaryStatsDetails[statType] = escapedDetails;
     }
     statusData.rerollCount = Number(rerollCount); // 振り直し回数は既に増えているのでそのまま使用
     // 履歴を更新
@@ -70,10 +70,10 @@ async function execute(interaction) {
     }
     // カスタムダイス式が使用されている場合は、それも履歴に記録
     if (customDiceExpression) {
-        statusData.history += `${statType}: ${oldValue} → ${rerollResult} (${details}) [${customDiceExpression}]`;
+        statusData.history += `${statType}: ${oldValue} → ${rerollResult} ${details} [${customDiceExpression}]`;
     }
     else {
-        statusData.history += `${statType}: ${oldValue} → ${rerollResult} (${details})`;
+        statusData.history += `${statType}: ${oldValue} → ${rerollResult} ${details}`;
     }
     // 二次ステータスを再計算
     const statusService = StatusServiceFactory_1.StatusServiceFactory.create(statusData.version);

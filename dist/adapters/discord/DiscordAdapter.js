@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DiscordAdapter = void 0;
 const classicDiceRoll_1 = require("../../infrastructure/commands/legacy/classicDiceRoll");
 const messages_1 = require("../../presentation/discord/builders/messages");
+const MessageProcessor_1 = require("../../infrastructure/services/MessageProcessor");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 class DiscordAdapter {
@@ -204,6 +205,11 @@ class DiscordAdapter {
         });
     }
     async handleMessage(message) {
+        // 特別なメッセージパターンをチェック
+        const processed = await MessageProcessor_1.MessageProcessor.processMessage(message);
+        if (processed) {
+            return;
+        }
         if (!message.content.startsWith(this.prefix)) {
             await (0, classicDiceRoll_1.diceRoll)(message);
             return;

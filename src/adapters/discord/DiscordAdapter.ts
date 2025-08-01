@@ -4,6 +4,7 @@ import { InteractionHandler } from '../../interfaces/InteractionHandler';
 import { diceRoll } from '../../infrastructure/commands/legacy/classicDiceRoll';
 import { createErrorMessage } from '../../presentation/discord/builders/messages';
 import { WebSocketServer } from '../../infrastructure/websocket/WebSocketServer';
+import { MessageProcessor } from '../../infrastructure/services/MessageProcessor';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -206,6 +207,12 @@ export class DiscordAdapter {
     }
 
     async handleMessage(message: Message) {
+        // 特別なメッセージパターンをチェック
+        const processed = await MessageProcessor.processMessage(message);
+        if (processed) {
+            return;
+        }
+        
         if (!message.content.startsWith(this.prefix)) {
             await diceRoll(message);
             return;

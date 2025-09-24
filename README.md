@@ -124,3 +124,6 @@ src/
 - **動的ロード**: `infrastructure/commands/`配下の`*-command.ts`ファイルを自動読み込み
 - **ハンドラー分離**: ビジネスロジックをCommandHandlerに集約
 - **統一された命名規則**: すべてのコマンドファイルは`{command-name}-command.ts`形式
+
+
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/6m10cmUK/JUPITER-SYSTEM.V.3.2?utm_source=oss&utm_medium=github&utm_campaign=6m10cmUK%2FJUPITER-SYSTEM.V.3.2&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)

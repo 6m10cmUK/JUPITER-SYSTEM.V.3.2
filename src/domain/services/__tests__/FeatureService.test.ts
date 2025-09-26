@@ -10,7 +10,12 @@ import fs from 'fs';
 
 // モックの設定
 jest.mock('fs');
-jest.mock('../../../infrastructure/services/ConfigurationStore');
+jest.mock('../../../infrastructure/services/ConfigurationStore', () => ({
+    configurationStore: {
+        getUserConfiguration: jest.fn(),
+        clearUserConfiguration: jest.fn(),
+    },
+}));
 jest.mock('../../utils/dice');
 
 const mockFs = fs as jest.Mocked<typeof fs>;
@@ -107,6 +112,36 @@ describe('FeatureService', () => {
             expect(result.usedPredefinedValues).toBe(true);
 
             // 使用後のクリアが呼ばれることを確認
+            expect(mockConfigurationStore.clearUserConfiguration).toHaveBeenCalledWith('test-user-123', 'feature');
+        });
+
+        test('事前設定値の混在ケース（不足分をランダム補完）', () => {
+            // 1個の事前設定値で3個要求（混在ケース）
+            mockConfigurationStore.getUserConfiguration.mockReturnValue([33]); // 3-3のみ
+
+            const request: FeatureGenerationRequest = {
+                count: 3,
+                userId: 'test-user-123',
+                guildId: 'test-guild-456'
+            };
+
+            const result = FeatureService.generateFeatures(request);
+
+            expect(result.features).toHaveLength(3);
+            
+            // 1つ目は事前設定値
+            expect(result.features[0].diceIndex).toBe(3);
+            expect(result.features[0].detailNumber).toBe(3);
+            expect(result.features[0].isPredefined).toBe(true);
+            
+            // 2つ目以降はランダム（事前設定値なし）
+            expect(result.features[1].isPredefined).toBe(false);
+            expect(result.features[2].isPredefined).toBe(false);
+            
+            // 事前設定値が一部でも使用されたフラグが立つ
+            expect(result.usedPredefinedValues).toBe(true);
+            
+            // 使用後のクリアが呼ばれる
             expect(mockConfigurationStore.clearUserConfiguration).toHaveBeenCalledWith('test-user-123', 'feature');
         });
 

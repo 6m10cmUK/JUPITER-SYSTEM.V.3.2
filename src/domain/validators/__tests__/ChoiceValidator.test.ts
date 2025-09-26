@@ -50,6 +50,34 @@ describe('ChoiceValidator', () => {
             expect(result.isValid).toBe(true);
             expect(result.options).toEqual(['選択肢1', '選択肢2', '選択肢3']);
         });
+
+        test('全角スペース区切りが正しく解析される', () => {
+            const result = validator.validate('選択肢A　選択肢B　選択肢C');
+
+            expect(result.isValid).toBe(true);
+            expect(result.options).toEqual(['選択肢A', '選択肢B', '選択肢C']);
+        });
+
+        test('パイプ区切りが正しく解析される', () => {
+            const result = validator.validate('オプション1|オプション2|オプション3');
+
+            expect(result.isValid).toBe(true);
+            expect(result.options).toEqual(['オプション1', 'オプション2', 'オプション3']);
+        });
+
+        test('choice接頭辞なしの[]記法が解析される', () => {
+            const result = validator.validate('[red,green,blue]');
+
+            expect(result.isValid).toBe(true);
+            expect(result.options).toEqual(['red', 'green', 'blue']);
+        });
+
+        test('choice接頭辞なしの()記法が解析される', () => {
+            const result = validator.validate('(alpha,beta,gamma)');
+
+            expect(result.isValid).toBe(true);
+            expect(result.options).toEqual(['alpha', 'beta', 'gamma']);
+        });
     });
 
     describe('サニタイゼーション', () => {
@@ -164,20 +192,22 @@ describe('ChoiceValidator', () => {
         });
 
         test('不明なエラーでも適切に処理される', () => {
-            // parseChoiceOptionsをモックして例外を発生させる
             const originalParseOptions = (validator as any).parseChoiceOptions;
-            (validator as any).parseChoiceOptions = jest.fn(() => {
-                throw new Error('Unknown error');
-            });
+            try {
+                // parseChoiceOptionsをモックして例外を発生させる
+                (validator as any).parseChoiceOptions = jest.fn(() => {
+                    throw new Error('Unknown error');
+                });
 
-            const result = validator.validate('test');
+                const result = validator.validate('test');
 
-            expect(result.isValid).toBe(false);
-            expect(result.error).toBeInstanceOf(ChoiceValidationError);
-            expect(result.error?.code).toBe('INVALID_FORMAT');
-
-            // 元に戻す
-            (validator as any).parseChoiceOptions = originalParseOptions;
+                expect(result.isValid).toBe(false);
+                expect(result.error).toBeInstanceOf(ChoiceValidationError);
+                expect(result.error?.code).toBe('INVALID_FORMAT');
+            } finally {
+                // 確実にモックを復元
+                (validator as any).parseChoiceOptions = originalParseOptions;
+            }
         });
     });
 });

@@ -40,15 +40,27 @@ export class WordleCommandHandler {
             console.log(`Wordle game initiated by ${interaction.user.username} in ${interaction.guildId}`);
 
         } catch (error) {
-            await interaction.reply({
-                content: 'Wordleゲームの開始中にエラーが発生しました。',
-                ephemeral: true
-            });
-
-            console.error('Wordle command error:', {
-                error: error instanceof Error ? error.message : String(error),
+            const errorMessage = 'Wordleゲームの開始中にエラーが発生しました。';
+            try {
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.followUp({ content: errorMessage, ephemeral: true });
+                } else {
+                    await interaction.reply({ content: errorMessage, ephemeral: true });
+                }
+            } catch {
+                // 二次的な応答エラーは握りつぶす
+            }
+            
+            // 統一エラーハンドラーによる構造化ログ
+            console.error('Wordle command error', {
+                err: error instanceof Error ? { 
+                    name: error.name, 
+                    message: error.message, 
+                    stack: error.stack 
+                } : String(error),
                 userId: interaction.user.id,
-                guildId: interaction.guildId
+                guildId: interaction.guildId ?? 'DM',
+                command: 'wordle'
             });
         }
     }

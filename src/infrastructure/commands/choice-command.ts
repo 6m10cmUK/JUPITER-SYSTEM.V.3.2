@@ -4,8 +4,12 @@ import {
     SlashCommandStringOption,
 } from 'discord.js';
 import { Command } from '../../interfaces/Command';
-import { choice } from './legacy/choiceFunction';
-import { generateEmbed } from '../../presentation/discord/builders/embedGenerator';
+import { ChoiceCommandHandler } from './handlers/ChoiceCommandHandler';
+
+/**
+ * 選択肢ランダム選択コマンド
+ * 複数の選択肢からランダムに1つを選ぶ機能を提供
+ */
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('choice')
@@ -17,13 +21,8 @@ export const command: Command = {
         ) as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
-        const args = interaction.options.getString('args') ?? '';
-        const [result, color] = await choice(`choice(${args})`);
-        const embed = generateEmbed(interaction)
-            .setColor(typeof color === 'string' ? parseInt(color, 16) : color)
-            .setFields(
-                { name: `choice(${args})`, value: result.toString() }
-            );
-        await interaction.reply({embeds: [embed]});
+        // ChoiceCommandHandlerに処理を委譲（統一パターン）
+        const handler = new ChoiceCommandHandler();
+        await handler.handle(interaction);
     }
 }; 

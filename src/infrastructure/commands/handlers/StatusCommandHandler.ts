@@ -3,8 +3,10 @@ import { GenerateStatusUseCase } from '../../../application/use-cases/status/Gen
 import { StatusEmbedFormatter } from '../../../presentation/formatters/StatusEmbedFormatter';
 import { StatusResultDto, CoCVersion } from '../../../application/dto/StatusDto';
 import { StatusComponentBuilder } from '../../../presentation/discord/builders/StatusComponentBuilder';
+import { CommandHandler } from '../../../interfaces/patterns/CommandPatterns';
+import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 
-export class StatusCommandHandler {
+export class StatusCommandHandler implements CommandHandler {
     private readonly generateStatusUseCase: GenerateStatusUseCase;
     private readonly formatter: StatusEmbedFormatter;
     

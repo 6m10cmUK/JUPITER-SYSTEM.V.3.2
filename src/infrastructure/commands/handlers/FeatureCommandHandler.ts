@@ -1,52 +1,87 @@
 import { ChatInputCommandInteraction } from 'discord.js';
-import fs from 'fs';
-import path from 'path';
-import { rollDice } from '../../../domain/utils/dice';
 import { generateEmbed } from '../../../presentation/discord/builders/embedGenerator';
-import { configurationStore } from '../../services/ConfigurationStore';
+import { FeatureService } from '../../../domain/services/FeatureService';
+import { 
+    FeatureGenerationRequest, 
+    FeatureGenerationError 
+} from '../../../application/dto/FeatureDto';
 
+/**
+ * 特徴生成コマンドハンドラー（型安全性強化版）
+ * any型を排除し、適切なエラーハンドリングを実装
+ */
 export class FeatureCommandHandler {
-    async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-        const dataPath = path.join(process.cwd(), 'src', 'data', 'features.json');
-        const featureData = await JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-
-        const embed = generateEmbed(interaction)
-            .setTitle('ランダム特徴表')
-            .setColor(0x888888);
-
+    /**
+     * 特徴生成処理を実行（統一ハンドラーパターン）
+     * @param interaction Discord インタラクション
+     */
+    async handle(interaction: ChatInputCommandInteraction): Promise<void> {
         const count = interaction.options.getInteger('count') ?? 1;
-        const userId = interaction.user.id;
-        
-        // ユーザー設定を確認
-        const predefinedValues = configurationStore.getUserConfiguration(userId, 'feature');
-        
-        for (let i = 0; i < count; i++) {
-            let randomIndex: number;
-            let randomNumber: number;
-            
-            if (predefinedValues && i < predefinedValues.length) {
-                // 事前設定された値を使用
-                const value = predefinedValues[i];
-                randomIndex = Math.floor(value / 10);
-                randomNumber = value % 10;
-            } else {
-                // 通常のランダム処理
-                randomIndex = rollDice(1, 6).reduce((a, b) => a + b, 0) - 1;
-                randomNumber = rollDice(1, 10).reduce((a, b) => a + b, 0) - 1;
+
+        try {
+            // 型安全な特徴生成リクエスト
+            const request: FeatureGenerationRequest = {
+                count,
+                userId: interaction.user.id,
+                guildId: interaction.guildId ?? undefined
+            };
+
+            // ドメインサービスに処理を委譲
+            const result = FeatureService.generateFeatures(request);
+
+            // 結果をEmbedに変換
+            const embed = generateEmbed(interaction)
+                .setTitle('ランダム特徴表')
+                .setColor(0x888888);
+
+            // 生成された特徴を追加
+            for (const generatedFeature of result.features) {
+                const { diceIndex, detailNumber, feature, isPredefined } = generatedFeature;
+                const prefix = isPredefined ? '🎯 ' : '';
+                
+                embed.addFields({
+                    name: `${prefix}${diceIndex}-${detailNumber} ${feature.name}`,
+                    value: feature.detail
+                });
             }
 
-            const randomFeature = featureData[randomIndex][randomNumber];
+            // 事前設定値使用の場合は注記
+            if (result.usedPredefinedValues) {
+                embed.setFooter({ text: '🎯 事前設定値が使用されました' });
+            }
 
-            embed.addFields(
-                { name: `${randomIndex + 1}-${randomNumber + 1} ${randomFeature.name}`, value: randomFeature.detail }
-            );
-        }
-        
-        // 使用後は設定をクリア
-        if (predefinedValues) {
-            configurationStore.clearUserConfiguration(userId, 'feature');
-        }
+            await interaction.reply({ embeds: [embed] });
 
-        await interaction.reply({ embeds: [embed] });
+        } catch (error) {
+            // ユーザーフレンドリーなエラーメッセージ
+            let userMessage = '特徴生成の処理中にエラーが発生しました。';
+            
+            if (error instanceof FeatureGenerationError) {
+                switch (error.code) {
+                    case 'DATA_LOAD_ERROR':
+                        userMessage = '特徴データの読み込みに失敗しました。';
+                        break;
+                    case 'INVALID_COUNT':
+                        userMessage = '特徴の数は1〜3個で指定してください。';
+                        break;
+                    case 'GENERATION_ERROR':
+                        userMessage = '特徴の生成中にエラーが発生しました。';
+                        break;
+                }
+            }
+
+            await interaction.reply({
+                content: userMessage,
+                ephemeral: true
+            });
+
+            // 詳細ログ
+            console.error('Feature generation error:', {
+                error: error instanceof Error ? error.message : String(error),
+                count,
+                userId: interaction.user.id,
+                guildId: interaction.guildId
+            });
+        }
     }
 }

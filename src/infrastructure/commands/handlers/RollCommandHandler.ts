@@ -4,6 +4,11 @@ import { RollDiceUseCase } from '../../../application/use-cases/dice/RollDiceUse
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFormatter';
 
+/**
+ * ダイスロールコマンドハンドラー
+ * 基本的なダイス記法（1d6, 2d10+5など）をサポート
+ */
+
 export class RollCommandHandler implements Command {
     private readonly rollDiceUseCase: RollDiceUseCase;
     private readonly formatter: DiceEmbedFormatter;

@@ -87,8 +87,9 @@ export class FeatureService {
             if (predefinedValues && i < predefinedValues.length) {
                 // 事前設定された値を使用
                 const value = predefinedValues[i];
-                diceIndex = Math.floor(value / 10);
-                detailNumber = value % 10;
+                // 期待値: 11〜66（1基準） -> 0基準へ変換
+                diceIndex = Math.floor(value / 10) - 1;
+                detailNumber = (value % 10) - 1;
                 isPredefined = true;
                 usedPredefinedValues = true;
             } else {

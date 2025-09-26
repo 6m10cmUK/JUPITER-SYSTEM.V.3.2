@@ -14,8 +14,9 @@ export class NameCommandHandler {
      */
     async handle(interaction: ChatInputCommandInteraction): Promise<void> {
         const type = interaction.options.getString('type') ?? 'male';
-        const region = interaction.options.getString('region') ?? 'japanese';
-        const count = interaction.options.getInteger('count') ?? 1;
+        const region = interaction.options.getString('region') ?? 'jp';
+        const rawCount = interaction.options.getInteger('count') ?? 1;
+        const count = Math.min(Math.max(rawCount, 1), 10); // 1〜10に制限
 
         try {
             // 並列処理：データ読み込みと検証を同時実行

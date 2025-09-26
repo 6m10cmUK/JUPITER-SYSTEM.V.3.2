@@ -53,14 +53,18 @@ export class NinpoCommandHandler {
      * @param interaction Discord インタラクション
      */
     private async handleRandomNinpo(interaction: ChatInputCommandInteraction): Promise<void> {
-        const count = interaction.options.getInteger('count') ?? 1;
-        const category = interaction.options.getString('category') ?? '';
+        // TODO: 将来的にcount値でランダム抽選数を制御する予定
+        const rawCount = interaction.options.getInteger('count') ?? 1;
+        const _count = Math.min(Math.max(rawCount, 1), 10); // 1〜10に制限（将来使用）
+        const categoryInput = interaction.options.getString('category') as NinpoCategory | null;
+        const category: NinpoCategory = categoryInput ?? 'hanyo';
         
         const criteria: NinpoSearchCriteria = {
-            query: category,
+            // TODO: 真のランダム抽選導線をサービス層に実装するまでの暫定値
+            query: '',
             searchType: 'all',
-            category: 'hanyo',
-            page: count
+            category,
+            page: 1
         };
         
         const display = await this.formatter.format(interaction, criteria);

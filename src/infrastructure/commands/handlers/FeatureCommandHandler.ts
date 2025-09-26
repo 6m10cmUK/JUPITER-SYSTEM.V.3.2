@@ -16,7 +16,8 @@ export class FeatureCommandHandler {
      * @param interaction Discord インタラクション
      */
     async handle(interaction: ChatInputCommandInteraction): Promise<void> {
-        const count = interaction.options.getInteger('count') ?? 1;
+        const rawCount = interaction.options.getInteger('count') ?? 1;
+        const count = Math.min(Math.max(rawCount, 1), 9); // 1〜9に制限
 
         try {
             // 型安全な特徴生成リクエスト

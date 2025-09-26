@@ -73,7 +73,7 @@ export class ChoiceValidator {
 
             return {
                 isValid: true,
-                options
+                options: options.map(o => this.sanitizeOption(o))
             };
 
         } catch (error) {
@@ -123,15 +123,22 @@ export class ChoiceValidator {
     }
 
     /**
-     * 選択肢から危険な文字を除去
+     * 選択肢から危険な文字を除去（正規表現非依存でLintエラー回避）
      * @param option 選択肢文字列
      * @returns サニタイズされた選択肢
      */
     private sanitizeOption(option: string): string {
-        // 制御文字を除去
-        let sanitized = option.replace(/[\x00-\x1F\x7F]/g, '');
+        // 制御文字（< 0x20 または 0x7F）を除去（正規表現非依存）
+        let sanitized = '';
+        for (const ch of option) {
+            const codePoint = ch.codePointAt(0)!;
+            // 印字可能文字のみを許可（0x20-0x7E, および一般的なUnicode文字）
+            if (codePoint >= 0x20 && codePoint !== 0x7F) {
+                sanitized += ch;
+            }
+        }
         
-        // XSS対策
+        // XSS対策（最低限）
         sanitized = sanitized.replace(/[<>]/g, '');
         
         return sanitized.trim();

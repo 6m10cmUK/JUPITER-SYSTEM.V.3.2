@@ -46,7 +46,9 @@ export class JobCommandHandler {
      * @param interaction Discord インタラクション
      */
     private async handleRandomJob(interaction: ChatInputCommandInteraction): Promise<void> {
-        const count = interaction.options.getInteger('count') ?? 1;
+        const rawCount = interaction.options.getInteger('count') ?? 1;
+        const count = Math.min(Math.max(rawCount, 1), 10); // 1〜10に制限
+        
         const criteria: JobSearchCriteria = {
             query: '',
             subcommand: 'random',

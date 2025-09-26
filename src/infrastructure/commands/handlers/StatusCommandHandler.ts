@@ -25,8 +25,18 @@ export class StatusCommandHandler implements CommandHandler {
         const characterName = interaction.options.getString('name') ?? 'キャラクター名';
         const showCustomMenu = interaction.options.getBoolean('custom') ?? false;
         
-        // StatusTypeからCoCVersionへの型安全な変換
-        const version: CoCVersion = type === 'ver7' ? '7' : '6';
+        // StatusTypeからCoCVersionへの厳格な変換（不正値はエラー）
+        let version: CoCVersion;
+        switch (type) {
+            case 'ver6':
+                version = '6';
+                break;
+            case 'ver7':
+                version = '7';
+                break;
+            default:
+                throw new Error(`Invalid status type: ${type}`);
+        }
 
         try {
             await this.executeStatusGeneration(interaction, version, characterName, showCustomMenu);

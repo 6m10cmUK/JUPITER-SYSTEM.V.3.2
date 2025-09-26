@@ -36,11 +36,18 @@ describe('StatusComponentBuilder', () => {
             HP: version === '6' ? 10 : 10,
             MP: version === '6' ? 14 : 14,
             SAN: version === '6' ? 70 : 75,
-            IDEA: version === '6' ? 100 : undefined,
-            LUCK: version === '6' ? 70 : undefined,
-            KNOW: version === '6' ? 110 : undefined,
-            MOV: 8,
-            DB: '-1D4'
+            DB: '-1D4',
+            JobPoints: 200,
+            InterestPoints: 100,
+            ...(version === '6' ? {
+                IDA: 100,
+                LUC: 70,
+                KNW: 110
+            } : {
+                IDA: 100,
+                KNW: 110,
+                MOV: 8
+            })
         },
         rerollCount: 0,
         history: '',

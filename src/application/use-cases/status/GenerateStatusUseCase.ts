@@ -1,4 +1,4 @@
-import { StatusGenerationDto, StatusResultDto } from '../../dto/StatusDto';
+import { StatusGenerationDto, StatusResultDto, SecondaryStats } from '../../dto/StatusDto';
 import { StatusServiceFactory } from '../../../domain/services/status/StatusServiceFactory';
 
 export class GenerateStatusUseCase {
@@ -12,7 +12,7 @@ export class GenerateStatusUseCase {
             characterName: dto.characterName,
             primaryStats: rollResult.stats,
             primaryStatsDetails: rollResult.details,
-            secondaryStats,
+            secondaryStats: secondaryStats as unknown as SecondaryStats,
             rerollCount: 0,
             history: ''
         };
@@ -48,7 +48,7 @@ export class GenerateStatusUseCase {
             ...currentStats,
             primaryStats: updatedPrimaryStats,
             primaryStatsDetails: updatedPrimaryStatsDetails,
-            secondaryStats: updatedSecondaryStats,
+            secondaryStats: updatedSecondaryStats as unknown as SecondaryStats,
             rerollCount: currentStats.rerollCount + 1,
             history: currentStats.history + historyEntry
         };
@@ -77,7 +77,7 @@ export class GenerateStatusUseCase {
         return {
             ...currentStats,
             primaryStats: updatedPrimaryStats,
-            secondaryStats: updatedSecondaryStats,
+            secondaryStats: updatedSecondaryStats as unknown as SecondaryStats,
             history: currentStats.history + historyEntry
         };
     }

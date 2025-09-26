@@ -6,6 +6,7 @@ import {
     ActionRowBuilder,
     ModalSubmitInteraction
 } from 'discord.js';
+import { SecondaryStats } from '../application/dto/StatusDto';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
 import { createErrorMessage } from '../presentation/discord/builders/messages';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
@@ -154,7 +155,7 @@ export async function handleCustomSetModal(interaction: ModalSubmitInteraction) 
 
         // 二次ステータスを再計算
         const statusService = StatusServiceFactory.create(statusData.version);
-        statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats);
+        statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats) as unknown as SecondaryStats;
 
         // messageIdとuserIdを設定
         statusData.messageId = messageId;

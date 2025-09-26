@@ -33,7 +33,7 @@ export const command: Command = {
         
     async execute(interaction: ChatInputCommandInteraction) {
         // ユーザーの入力オプションを取得
-        const type = interaction.options.getString('type');
+        const type: string = interaction.options.getString('type', true);
         const name = interaction.options.getString('name') ?? 'キャラクター名';
         const showCustomMenu = interaction.options.getBoolean('custom') ?? false;
         

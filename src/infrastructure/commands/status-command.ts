@@ -50,16 +50,8 @@ export const command: Command = {
         ) as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
-        // ユーザーの入力オプションを取得（型安全）
-        const type: StatusType = interaction.options.getString('type', true) as StatusType;
-        const name = interaction.options.getString('name') ?? 'キャラクター名';
-        const showCustomMenu = interaction.options.getBoolean('custom') ?? false;
-        
-        // StatusTypeからCoCVersionへの型安全な変換
-        const version: CoCVersion = convertStatusTypeToCoCVersion(type);
-        
-        // StatusCommandHandlerに処理を委譲
+        // StatusCommandHandlerに処理を委譲（統一パターン）
         const handler = new StatusCommandHandler();
-        await handler.handle(interaction, version, name, showCustomMenu);
+        await handler.handle(interaction);
     }
 }; 

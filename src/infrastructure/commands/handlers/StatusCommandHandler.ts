@@ -16,17 +16,40 @@ export class StatusCommandHandler implements CommandHandler {
     }
     
     /**
-     * ステータス生成処理（並列処理によるパフォーマンス最適化）
+     * ステータス生成処理（統一インターフェース準拠）
+     * @param interaction Discord インタラクション
+     */
+    async handle(interaction: ChatInputCommandInteraction): Promise<void> {
+        // インタラクションから引数を抽出（統一パターン）
+        const type: string = interaction.options.getString('type', true);
+        const characterName = interaction.options.getString('name') ?? 'キャラクター名';
+        const showCustomMenu = interaction.options.getBoolean('custom') ?? false;
+        
+        // StatusTypeからCoCVersionへの型安全な変換
+        const version: CoCVersion = type === 'ver7' ? '7' : '6';
+
+        try {
+            await this.executeStatusGeneration(interaction, version, characterName, showCustomMenu);
+        } catch (error) {
+            await UnifiedErrorHandler.handleCommandError(interaction, error, {
+                commandName: 'status',
+                input: { type, characterName, showCustomMenu }
+            });
+        }
+    }
+
+    /**
+     * ステータス生成の実際の処理（並列処理最適化）
      * @param interaction Discord インタラクション
      * @param version CoCのバージョン
      * @param characterName キャラクター名
      * @param showCustomMenu カスタムメニュー表示フラグ
      */
-    async handle(
+    private async executeStatusGeneration(
         interaction: ChatInputCommandInteraction,
         version: CoCVersion,
         characterName: string,
-        showCustomMenu: boolean = false
+        showCustomMenu: boolean
     ): Promise<void> {
         // 並列処理による最適化: Discord API呼び出しとステータス生成を同時実行
         const [replyMessage, statusResult] = await Promise.all([

@@ -1,4 +1,10 @@
-import { CommandHandler } from '../../interfaces/patterns/CommandPatterns';
+import { ChatInputCommandInteraction } from 'discord.js';
+
+// 統一されたハンドラーインターフェース（簡潔版）
+interface UnifiedCommandHandler {
+    handle(interaction: ChatInputCommandInteraction): Promise<void>;
+}
+
 import { StatusCommandHandler } from '../commands/handlers/StatusCommandHandler';
 import { RollCommandHandler } from '../commands/handlers/RollCommandHandler';
 import { FeatureCommandHandler } from '../commands/handlers/FeatureCommandHandler';
@@ -13,7 +19,7 @@ import { ScheduleCommandHandler } from '../commands/handlers/ScheduleCommandHand
  * 統一されたハンドラー生成とシングルトン管理
  */
 export class CommandHandlerFactory {
-    private static instances = new Map<string, CommandHandler>();
+    private static instances = new Map<string, UnifiedCommandHandler>();
 
     /**
      * 指定されたハンドラー型のインスタンスを取得
@@ -21,7 +27,7 @@ export class CommandHandlerFactory {
      * @param dependencies 依存関係（オプション）
      * @returns ハンドラーインスタンス
      */
-    static create<T extends CommandHandler>(
+    static create<T extends UnifiedCommandHandler>(
         handlerType: new (...args: any[]) => T,
         dependencies?: any[]
     ): T {
@@ -41,7 +47,7 @@ export class CommandHandlerFactory {
      * @param handlerName ハンドラー名
      * @returns ハンドラーインスタンス
      */
-    static getHandler(handlerName: string): CommandHandler | undefined {
+    static getHandler(handlerName: string): UnifiedCommandHandler | undefined {
         return this.instances.get(handlerName);
     }
 
@@ -50,7 +56,7 @@ export class CommandHandlerFactory {
      * @param commandName コマンド名
      * @returns ハンドラーインスタンス
      */
-    static getHandlerByCommandName(commandName: string): CommandHandler {
+    static getHandlerByCommandName(commandName: string): UnifiedCommandHandler {
         switch (commandName) {
             case 'status':
                 return this.create(StatusCommandHandler);

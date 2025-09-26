@@ -6,6 +6,11 @@ import {
 import { Command } from '../../interfaces/Command';
 import { FeatureCommandHandler } from './handlers/FeatureCommandHandler';
 
+/**
+ * CoC TRPG用のランダム特徴表コマンド
+ * 1-3個の特徴をランダムに生成する機能を提供
+ */
+
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('feature')

@@ -2,6 +2,11 @@ import { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandStringOpt
 import { Command } from '../../interfaces/Command';
 import { StatusCommandHandler } from './handlers/StatusCommandHandler';
 
+/**
+ * CoC（Call of Cthulhu）TRPG用のキャラクターステータス生成コマンド
+ * 6版と7版の両方に対応し、ランダムステータス生成やカスタムセット機能を提供
+ */
+
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('status')
@@ -27,11 +32,15 @@ export const command: Command = {
         ) as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
+        // ユーザーの入力オプションを取得
         const type = interaction.options.getString('type');
         const name = interaction.options.getString('name') ?? 'キャラクター名';
         const showCustomMenu = interaction.options.getBoolean('custom') ?? false;
+        
+        // CoCバージョンの判定（デフォルトは6版）
         const version = type === 'ver7' ? '7' : '6';
         
+        // StatusCommandHandlerに処理を委譲
         const handler = new StatusCommandHandler();
         await handler.handle(interaction, version, name, showCustomMenu);
     }

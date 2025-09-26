@@ -4,7 +4,7 @@ import { DiceRollRequest, DiceRollResponse, DiceRollDto } from '../../dto/DiceRo
 import { CCBRoll, ChoiceRoll } from '../../../domain/entities/DiceRoll';
 import { CoCDiceRoll, FARRoll } from '../../../domain/entities/CoCDiceRoll';
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
-import { DiceRollResult, isDiceRoll, isCoCDiceRoll, isFARRoll } from './types/DiceRollTypes';
+import { DiceRollResult, isDiceRoll, isCoCDiceRoll, isFARRoll, isCCBRoll, isBreakdownAwareCCBRoll } from './types/DiceRollTypes';
 
 export class RollDiceUseCase {
     constructor(private readonly diceService: DiceService) {}
@@ -50,15 +50,24 @@ export class RollDiceUseCase {
             return this.mapFARToDto(roll);
         }
         
+        if (isCCBRoll(roll)) {
+            return this.mapCCBToDto(roll);
+        }
+        
         return this.mapStandardToDto(roll);
     }
 
+    /**
+     * CCBRoll（6版）を型安全にDTOに変換
+     * @param roll CCBRollインスタンス
+     * @returns DiceRollDto
+     */
     private mapCCBToDto(roll: CCBRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
         let color = 0x888888;
         
-        // 故障判定の場合（CCBRollの拡張プロパティ）
-        const breakdownNumber = 'breakdownNumber' in roll ? (roll as any).breakdownNumber : undefined;
+        // 故障判定の場合（型安全なアクセス）
+        const breakdownNumber = roll.getBreakdownNumber();
         if (typeof breakdownNumber === 'number') {
             if (roll.getTotal() >= breakdownNumber) {
                 if (roll.isCriticalFailure()) {

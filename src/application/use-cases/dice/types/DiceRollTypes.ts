@@ -25,10 +25,14 @@ export function isCCBRoll(roll: DiceRollResult): roll is CCBRoll {
 }
 
 /**
- * 故障ナンバーを持つCCBRollの型ガード
+ * 故障ナンバーが実際に設定されているCCBRollの型ガード
  * @param roll ダイスロール結果
- * @returns 故障ナンバーを持つCCBRollかどうか
+ * @returns 故障ナンバーが設定されているCCBRollかどうか
  */
-export function isBreakdownAwareCCBRoll(roll: DiceRollResult): roll is CCBRoll & { getBreakdownNumber(): number | undefined } {
-    return roll instanceof CCBRoll && typeof (roll as CCBRoll).getBreakdownNumber === 'function';
+export function isBreakdownAwareCCBRoll(
+    roll: DiceRollResult
+): roll is CCBRoll & { getBreakdownNumber(): number } {
+    if (!(roll instanceof CCBRoll)) return false;
+    const breakdownNumber = roll.getBreakdownNumber();
+    return typeof breakdownNumber === 'number';
 }

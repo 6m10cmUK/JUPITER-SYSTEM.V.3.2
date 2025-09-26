@@ -13,11 +13,23 @@ export class CoCDiceService {
             const target = breakdownMatch[2] ? parseInt(breakdownMatch[2]) : 100;
             const roll = rollDice(1, 100)[0];
             
-            // 故障判定用のCCBRollを作成
-            const ccbRoll = CCBRoll.evaluate(target, roll, 'ccb');
-            // 故障情報を追加
-            (ccbRoll as any).breakdownNumber = breakdownNumber;
-            return ccbRoll;
+            // 故障判定用のCCBRollを作成（故障ナンバー付き）
+            const isSuccess = roll <= target;
+            const isSpecial = roll <= Math.ceil(target / 5);
+            const isCritical = roll <= 5;
+            const isFumble = roll >= 96;
+            
+            return new CCBRoll(
+                `ccb(${breakdownNumber})<=${target}`,
+                [roll],
+                roll,
+                target,
+                isSuccess,
+                isSpecial && isSuccess,
+                isCritical && isSuccess,
+                isFumble && !isSuccess,
+                breakdownNumber // 故障ナンバーを設定
+            );
         }
         
         // cc<=50 または ccb<=50 のような形式の場合
@@ -98,7 +110,8 @@ export class CoCDiceService {
             bothSuccess,
             false, // スペシャルは適用しない
             bothCritical,
-            eitherFumble
+            eitherFumble,
+            undefined // CBRには故障ナンバーなし
         );
     }
 

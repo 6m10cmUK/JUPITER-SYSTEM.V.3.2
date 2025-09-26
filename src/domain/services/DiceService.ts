@@ -7,10 +7,10 @@ export { IDiceService } from './dice/IDiceService';
 
 /**
  * レガシー互換性のためのDiceServiceクラス
- * 新しい実装は DiceServiceFactory を使用
+ * 新しい実装は DiceServiceFactory を使用（シングルトンパターン）
  */
 export class DiceService implements IDiceService {
-    private diceServiceFactory = new DiceServiceFactory();
+    private diceServiceFactory = DiceServiceFactory.getInstance();
 
     roll(expression: DiceExpression): DiceRoll {
         return this.diceServiceFactory.roll(expression);

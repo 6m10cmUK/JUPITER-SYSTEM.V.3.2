@@ -4,13 +4,15 @@ import { DiceService } from '../../../domain/services/DiceService';
 import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFormatter';
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
 import { DiceCommandValidator } from './validation/diceCommandValidator';
+import { DiceSystemError, InvalidExpressionError } from '../../../shared/errors/DiceSystemError';
 
 export class DiceRollHandler {
     private readonly rollDiceUseCase: RollDiceUseCase;
     private readonly formatter: DiceEmbedFormatter;
 
     constructor() {
-        const diceService = new DiceService();
+        // シングルトンパターンによる最適化
+        const diceService = new DiceService(); // DiceService内部でシングルトンファクトリを使用
         this.rollDiceUseCase = new RollDiceUseCase(diceService);
         this.formatter = new DiceEmbedFormatter();
     }
@@ -50,12 +52,42 @@ export class DiceRollHandler {
             
             await message.reply({ embeds: [embedWithFullExpression] });
             
+            // 成功ログ（型安全に）
             console.log(
-                `${message.guildId} ${message.author.username} ${content} ${response.rolls.map((r: any) => r.result).join(' ')}`
+                `${message.guildId} ${message.author.username} ${content} ${response.rolls.map(r => r.result).join(' ')}`
             );
+            
         } catch (error) {
-            // Silently fail for classic commands
-            console.error('Classic dice roll error:', error);
+            // メッセージベースのダイスロールは控えめなエラー表示
+            if (error instanceof InvalidExpressionError) {
+                // 無効な式の場合は静かに無視（他のメッセージと混同を避けるため）
+                console.warn('Invalid dice expression (ignored):', error.expression);
+                return;
+            }
+            
+            if (error instanceof DiceSystemError) {
+                // システムエラーの場合はリアクションで通知
+                try {
+                    await message.react('❌');
+                } catch (reactionError) {
+                    // リアクション失敗時は無視
+                }
+                console.error('Dice system error:', {
+                    error: error.message,
+                    expression: content,
+                    userId: message.author.id,
+                    guildId: message.guildId
+                });
+                return;
+            }
+            
+            // その他のエラーはログのみ（クラシックコマンドは静かに失敗）
+            console.error('Classic dice roll error:', {
+                error: error instanceof Error ? error.message : String(error),
+                expression: content,
+                userId: message.author.id,
+                guildId: message.guildId
+            });
         }
     }
 }

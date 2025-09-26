@@ -68,7 +68,8 @@ export class RollDiceUseCase {
         
         // 故障判定の場合（型安全なアクセス）
         const breakdownNumber = roll.getBreakdownNumber();
-        if (typeof breakdownNumber === 'number') {
+        if (breakdownNumber !== undefined) {
+            // 故障ナンバーが設定されている場合の処理
             if (roll.getTotal() >= breakdownNumber) {
                 if (roll.isCriticalFailure()) {
                     result += `＞ **ファンブル＆故障** `;

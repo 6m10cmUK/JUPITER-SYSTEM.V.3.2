@@ -89,7 +89,8 @@ export class CCBRoll extends DiceRoll {
             isSuccess,
             isSpecial && isSuccess,
             isCritical && isSuccess,
-            isFumble && !isSuccess
+            isFumble && !isSuccess,
+            undefined // 通常のCCBロールには故障ナンバーなし
         );
     }
 }

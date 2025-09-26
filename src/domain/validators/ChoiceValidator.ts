@@ -61,7 +61,8 @@ export class ChoiceValidator {
                 );
             }
 
-            // 各選択肢の長さチェック
+            // 各選択肢の長さチェックとサニタイズ
+            const sanitizedOptions: string[] = [];
             for (const option of options) {
                 if (option.length > ChoiceValidator.MAX_OPTION_LENGTH) {
                     throw new ChoiceValidationError(
@@ -69,11 +70,24 @@ export class ChoiceValidator {
                         'INVALID_CHARACTERS'
                     );
                 }
+                
+                // サニタイズを実行
+                const sanitized = this.sanitizeOption(option);
+                
+                // サニタイズ後に空文字になった場合はエラー
+                if (sanitized.length === 0) {
+                    throw new ChoiceValidationError(
+                        'Option contained only invalid characters', 
+                        'INVALID_CHARACTERS'
+                    );
+                }
+                
+                sanitizedOptions.push(sanitized);
             }
 
             return {
                 isValid: true,
-                options: options.map(o => this.sanitizeOption(o))
+                options: sanitizedOptions
             };
 
         } catch (error) {

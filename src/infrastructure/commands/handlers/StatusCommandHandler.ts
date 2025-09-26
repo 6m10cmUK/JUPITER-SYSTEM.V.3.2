@@ -3,7 +3,7 @@ import { GenerateStatusUseCase } from '../../../application/use-cases/status/Gen
 import { StatusEmbedFormatter } from '../../../presentation/formatters/StatusEmbedFormatter';
 import { StatusResultDto, CoCVersion } from '../../../application/dto/StatusDto';
 import { StatusComponentBuilder } from '../../../presentation/discord/builders/StatusComponentBuilder';
-import { CommandHandler } from '../../../interfaces/patterns/CommandPatterns';
+import { CommandHandler, ValidationError } from '../../../interfaces/patterns/CommandPatterns';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 
 export class StatusCommandHandler implements CommandHandler {
@@ -35,7 +35,7 @@ export class StatusCommandHandler implements CommandHandler {
                 version = '7';
                 break;
             default:
-                throw new Error(`Invalid status type: ${type}`);
+                throw new ValidationError(`サポートされていないステータスタイプです: ${type}`, 'INVALID_TYPE');
         }
 
         try {

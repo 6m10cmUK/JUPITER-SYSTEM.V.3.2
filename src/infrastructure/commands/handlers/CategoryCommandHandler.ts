@@ -79,7 +79,8 @@ export class CategoryCommandHandler {
      */
     private async handleCategoryCreate(interaction: ChatInputCommandInteraction): Promise<void> {
         const name = interaction.options.getString('name') ?? '';
-        const handOut = interaction.options.getInteger('hand-out') ?? 0;
+        const rawHandOut = interaction.options.getInteger('hand-out') ?? 0;
+        const handOut = Math.min(Math.max(rawHandOut, 0), 10); // 0〜10に制限
 
         if (!name.trim()) {
             throw new CategoryError('カテゴリ名を入力してください', 'INVALID_INPUT');
@@ -218,8 +219,8 @@ export class CategoryCommandHandler {
         return {
             operation,
             name: interaction.options.getString('name') ?? '',
-            handOut: interaction.options.getInteger('hand-out') || undefined,
-            categoryId: interaction.options.getString('category-id') || undefined
+            handOut: interaction.options.getInteger('hand-out') ?? undefined,
+            categoryId: interaction.options.getString('category-id') ?? undefined
         };
     }
 }

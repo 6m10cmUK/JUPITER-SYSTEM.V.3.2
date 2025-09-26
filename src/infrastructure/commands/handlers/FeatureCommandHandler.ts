@@ -17,7 +17,7 @@ export class FeatureCommandHandler {
      */
     async handle(interaction: ChatInputCommandInteraction): Promise<void> {
         const rawCount = interaction.options.getInteger('count') ?? 1;
-        const count = Math.min(Math.max(rawCount, 1), 9); // 1〜9に制限
+        const count = Math.min(Math.max(rawCount, 1), 3); // 1〜3に制限（ドメイン制約に一致）
 
         try {
             // 型安全な特徴生成リクエスト

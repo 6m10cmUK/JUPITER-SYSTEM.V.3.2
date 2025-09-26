@@ -24,6 +24,8 @@ export const command: Command = {
         .addIntegerOption((option: SlashCommandIntegerOption) =>
             option.setName('hand-out')
                 .setDescription('秘匿チャンネルの数')
+                .setMinValue(0)
+                .setMaxValue(10)
                 .setRequired(false)
         ) as SlashCommandBuilder,
 

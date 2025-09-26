@@ -13,8 +13,10 @@ export class NameCommandHandler {
      * @param interaction Discord インタラクション
      */
     async handle(interaction: ChatInputCommandInteraction): Promise<void> {
-        const type = interaction.options.getString('type') ?? 'male';
-        const region = interaction.options.getString('region') ?? 'jp';
+        const typeInput = interaction.options.getString('type') as 'male' | 'female' | null;
+        const type: 'male' | 'female' = typeInput ?? 'male';
+        const regionInput = interaction.options.getString('region') as 'jp' | null;
+        const region: 'jp' = regionInput ?? 'jp';
         const rawCount = interaction.options.getInteger('count') ?? 1;
         const count = Math.min(Math.max(rawCount, 1), 10); // 1〜10に制限
 

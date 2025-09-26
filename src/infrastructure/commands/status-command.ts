@@ -6,7 +6,6 @@ import { StatusCommandHandler } from './handlers/StatusCommandHandler';
  * CoC（Call of Cthulhu）TRPG用のキャラクターステータス生成コマンド
  * 6版と7版の両方に対応し、ランダムステータス生成やカスタムセット機能を提供
  */
-
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('status')

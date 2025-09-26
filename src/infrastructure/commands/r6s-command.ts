@@ -7,17 +7,17 @@ import { Command } from '../../interfaces/Command';
 import { SimpleCommandHandler } from './handlers/SimpleCommandHandler';
 
 const attackers = [
-    'Sledge', 'Thatcher', 'Ash', 'Thermite', 'Twitch', 'Montagne', 'Glaz', 'Fuze', 'Blitz', 'IQ',
-    'Buck', 'Blackbeard', 'Capitão', 'Hibana', 'Jackal', 'Ying', 'Zofia', 'Dokkaebi', 'Lion', 'Finka',
-    'Maverick', 'Nomad', 'Gridlock', 'Nøkk', 'Amaru', 'Kali', 'Iana', 'Ace', 'Zero', 'Flores',
-    'Osa', 'Sens', 'Grim', 'Brava', 'Ram', 'Deimos', 'Striker', 'Rauora'
+    'SLEDGE', 'THATCHER', 'ASH', 'THERMITE', 'TWITCH', 'MONTAGNE', 'GLAZ', 'FUZE', 'BLITZ', 'IQ',
+    'BUCK', 'BLACKBEARD', 'CAPITÃO', 'HIBANA', 'JACKAL', 'YING', 'ZOFIA', 'DOKKAEBI', 'LION', 'FINKA',
+    'MAVERICK', 'NOMAD', 'GRIDLOCK', 'NØKK', 'AMARU', 'KALI', 'IANA', 'ACE', 'ZERO', 'FLORES',
+    'OSA', 'SENS', 'GRIM', 'BRAVA', 'RAM', 'DEIMOS', 'STRIKER', 'RAUORA'
 ];
 
 const defenders = [
-    'Smoke', 'Mute', 'Castle', 'Pulse', 'Doc', 'Rook', 'Kapkan', 'Tachanka', 'Jäger', 'Bandit',
-    'Frost', 'Valkyrie', 'Caveira', 'Echo', 'Mira', 'Lesion', 'Ela', 'Vigil', 'Maestro', 'Alibi',
-    'Clash', 'Kaid', 'Mozzie', 'Warden', 'Goyo', 'Wamai', 'Oryx', 'Melusi', 'Aruni', 'Thunderbird',
-    'Thorn', 'Azami', 'Solis', 'Fenrir', 'Tubarão', 'Skopos', 'Sentry'
+    'SMOKE', 'MUTE', 'CASTLE', 'PULSE', 'DOC', 'ROOK', 'KAPKAN', 'TACHANKA', 'JÄGER', 'BANDIT',
+    'FROST', 'VALKYRIE', 'CAVEIRA', 'ECHO', 'MIRA', 'LESION', 'ELA', 'VIGIL', 'MAESTRO', 'ALIBI',
+    'CLASH', 'KAID', 'MOZZIE', 'WARDEN', 'GOYO', 'WAMAI', 'ORYX', 'MELUSI', 'ARUNI', 'THUNDERBIRD',
+    'THORN', 'AZAMI', 'SOLIS', 'FENRIR', 'TUBARÃO', 'SKOPOS', 'SENTRY'
 ];
 
 export const command: Command = {

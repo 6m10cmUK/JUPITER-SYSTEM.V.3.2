@@ -41,7 +41,8 @@ export class CCBRoll extends DiceRoll {
         private readonly success: boolean,
         private readonly special: boolean,
         private readonly critical: boolean,
-        private readonly fumble: boolean
+        private readonly fumble: boolean,
+        private readonly breakdownNumber?: number
     ) {
         super(expression, rolls, total, expression);
     }
@@ -66,6 +67,14 @@ export class CCBRoll extends DiceRoll {
         return this.fumble;
     }
 
+    /**
+     * 故障ナンバーを取得
+     * @returns 故障ナンバー（設定されている場合）
+     */
+    getBreakdownNumber(): number | undefined {
+        return this.breakdownNumber;
+    }
+
     static evaluate(target: number, roll: number, ruleType: 'cc' | 'ccb' = 'ccb'): CCBRoll {
         const isSuccess = roll <= target;
         const isSpecial = roll <= Math.ceil(target / 5);
@@ -80,7 +89,8 @@ export class CCBRoll extends DiceRoll {
             isSuccess,
             isSpecial && isSuccess,
             isCritical && isSuccess,
-            isFumble && !isSuccess
+            isFumble && !isSuccess,
+            undefined // 通常のCCBロールには故障ナンバーなし
         );
     }
 }

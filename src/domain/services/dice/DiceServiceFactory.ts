@@ -5,10 +5,39 @@ import { StandardDiceService } from './StandardDiceService';
 import { CoCDiceService } from './CoCDiceService';
 import { SpecialDiceService } from './SpecialDiceService';
 
+/**
+ * DiceServiceFactory - シングルトンパターンによる最適化
+ * インスタンス生成コストを削減し、メモリ使用量を最適化
+ */
 export class DiceServiceFactory implements IDiceService {
-    private standardDiceService = new StandardDiceService();
-    private cocDiceService = new CoCDiceService();
-    private specialDiceService = new SpecialDiceService();
+    private static instance: DiceServiceFactory;
+    private readonly standardDiceService: StandardDiceService;
+    private readonly cocDiceService: CoCDiceService;
+    private readonly specialDiceService: SpecialDiceService;
+
+    private constructor() {
+        this.standardDiceService = new StandardDiceService();
+        this.cocDiceService = new CoCDiceService();
+        this.specialDiceService = new SpecialDiceService();
+    }
+
+    /**
+     * DiceServiceFactoryのシングルトンインスタンスを取得
+     * @returns DiceServiceFactoryインスタンス
+     */
+    static getInstance(): DiceServiceFactory {
+        if (!DiceServiceFactory.instance) {
+            DiceServiceFactory.instance = new DiceServiceFactory();
+        }
+        return DiceServiceFactory.instance;
+    }
+
+    /**
+     * テスト用のインスタンスクリア
+     */
+    static clearInstance(): void {
+        DiceServiceFactory.instance = undefined as any;
+    }
 
     roll(expression: DiceExpression): DiceRoll {
         const expr = expression.getTargetExpression();

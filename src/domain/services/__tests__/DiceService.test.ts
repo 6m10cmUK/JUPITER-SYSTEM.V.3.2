@@ -67,7 +67,7 @@ describe('DiceService', () => {
             expect(result).toBeInstanceOf(CCBRoll);
             if (result instanceof CCBRoll) {
                 const roll = result.getTotal();
-                const breakdownNumber = (result as any).breakdownNumber;
+                const breakdownNumber = result.getBreakdownNumber();
                 
                 expect(breakdownNumber).toBe(96);
                 

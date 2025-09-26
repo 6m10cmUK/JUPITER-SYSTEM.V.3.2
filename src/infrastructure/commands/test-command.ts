@@ -5,12 +5,17 @@ import {
     SlashCommandUserOption,
 } from 'discord.js';
 import { Command } from '../../interfaces/Command';
-import { createSuccessMessage, createErrorMessage } from '../../presentation/discord/builders/messages';
+import { SimpleCommandHandler } from './handlers/SimpleCommandHandler';
+
+/**
+ * システムテストコマンド（hoge）
+ * ユーザーにロール追加のテスト機能
+ */
 
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('hoge')
-        .setDescription('選択肢からランダムに選ぶ')
+        .setDescription('システムテスト - ユーザーにロール追加')
         .addUserOption((option: SlashCommandUserOption) =>
             option.setName('user')
                 .setDescription('ユーザー')
@@ -23,39 +28,8 @@ export const command: Command = {
         ) as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
-        const user = interaction.options.getUser('user');
-        const role = interaction.options.getRole('role');
-
-        if (!user || !role) {
-            await interaction.reply({
-                content: 'ユーザーかロールの指定が正しくないよ',
-                ephemeral: true
-            });
-            return;
-        }
-
-        const member = await interaction.guild?.members.fetch(user.id);
-        const guildRole = interaction.guild?.roles.cache.get(role.id);
-
-        if (!member) {
-            const message = await createErrorMessage(interaction, 'ERROR', 'user not found.');
-            await interaction.reply(message);
-            return;
-        }
-        if (!guildRole) {
-            const message = await createErrorMessage(interaction, 'ERROR', 'role not found.');
-            await interaction.reply(message);
-            return;
-        }
-
-        try {
-            await member.roles.add(guildRole);
-            const message = await createSuccessMessage(interaction, 'SUCCESS', `add role ${guildRole.name} to ${user.username}`);
-            await interaction.reply(message);
-        } catch (error) {
-            const message = await createErrorMessage(interaction, 'ERROR', (error as Error).message);
-            await interaction.reply(message);
-        }
-
+        // SimpleCommandHandlerに処理を委譲（統一パターン）
+        const handler = new SimpleCommandHandler();
+        await handler.handleTest(interaction);
     }
-}; 
+};

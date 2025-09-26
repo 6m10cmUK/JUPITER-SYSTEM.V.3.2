@@ -87,7 +87,7 @@ export class NinpoEmbedFormatter {
         const { title, ninpos, currentPage, maxPage, categoryPages, currentCategory } = displayData;
 
         const embed = generateEmbed(interaction)
-            .setTitle(`🥷 ${title}`)
+            .setTitle(`${title}`)
             .setDescription(`${currentPage} / ${maxPage} ページ`)
             .setFooter({ text: `シノビガミ忍法データベース | ${currentPage} / ${maxPage}` })
             .setColor(0x5C0BB5); // 紫色（忍者っぽい色）

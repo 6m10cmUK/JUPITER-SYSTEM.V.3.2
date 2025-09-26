@@ -4,13 +4,15 @@ import { RollDiceUseCase } from '../../../application/use-cases/dice/RollDiceUse
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFormatter';
 import { DiceSystemError, InvalidExpressionError } from '../../../shared/errors/DiceSystemError';
+import { CommandHandler } from '../../../interfaces/patterns/CommandPatterns';
+import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 
 /**
  * ダイスロールコマンドハンドラー
  * 基本的なダイス記法（1d6, 2d10+5など）をサポート
  */
 
-export class RollCommandHandler implements Command {
+export class RollCommandHandler implements Command, CommandHandler {
     private readonly rollDiceUseCase: RollDiceUseCase;
     private readonly formatter: DiceEmbedFormatter;
 
@@ -72,6 +74,14 @@ export class RollCommandHandler implements Command {
                 stack: error instanceof Error ? error.stack : undefined
             });
         }
+    }
+
+    /**
+     * 統一インターフェース準拠のhandleメソッド
+     * @param interaction Discord インタラクション
+     */
+    async handle(interaction: ChatInputCommandInteraction): Promise<void> {
+        await this.execute(interaction);
     }
 }
 

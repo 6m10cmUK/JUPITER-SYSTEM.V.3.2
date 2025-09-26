@@ -4,7 +4,7 @@ import {
     SlashCommandIntegerOption,
 } from 'discord.js';
 import { Command } from '../../interfaces/Command';
-import { generateEmbed } from '../../presentation/discord/builders/embedGenerator';
+import { SimpleCommandHandler } from './handlers/SimpleCommandHandler';
 
 const attackers = [
     'Sledge', 'Thatcher', 'Ash', 'Thermite', 'Twitch', 'Montagne', 'Glaz', 'Fuze', 'Blitz', 'IQ',
@@ -33,44 +33,8 @@ export const command: Command = {
         ) as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
-        const count = interaction.options.getInteger('count') ?? 1;
-        
-        const embed = generateEmbed(interaction)
-            .setColor(0x00FF00)
-            .setTitle('R6S オペレーター選出');
-            
-        const fields = [];
-        const usedAttackers: string[] = [];
-        const usedDefenders: string[] = [];
-        
-        for (let i = 0; i < count; i++) {
-            // 重複しない攻撃側オペレーターを選択
-            const availableAttackers = attackers.filter(op => !usedAttackers.includes(op));
-            if (availableAttackers.length === 0) {
-                await interaction.reply({ content: '選択可能な攻撃側オペレーターが不足しています。', ephemeral: true });
-                return;
-            }
-            const randomAttacker = availableAttackers[Math.floor(Math.random() * availableAttackers.length)];
-            usedAttackers.push(randomAttacker);
-            
-            // 重複しない防衛側オペレーターを選択
-            const availableDefenders = defenders.filter(op => !usedDefenders.includes(op));
-            if (availableDefenders.length === 0) {
-                await interaction.reply({ content: '選択可能な防衛側オペレーターが不足しています。', ephemeral: true });
-                return;
-            }
-            const randomDefender = availableDefenders[Math.floor(Math.random() * availableDefenders.length)];
-            usedDefenders.push(randomDefender);
-            
-            fields.push(
-                { name: `🔫 攻撃側 ${count > 1 ? `#${i + 1}` : ''}`, value: randomAttacker, inline: true },
-                { name: `🛡️ 防衛側 ${count > 1 ? `#${i + 1}` : ''}`, value: randomDefender, inline: true },
-                { name: '\u200B', value: '\u200B', inline: true }
-            );
-        }
-        
-        embed.setFields(...fields);
-            
-        await interaction.reply({embeds: [embed]});
+        // R6SCommandHandlerに処理を委譲（統一パターン）
+        const handler = new SimpleCommandHandler();
+        await handler.handleR6S(interaction);
     }
 };

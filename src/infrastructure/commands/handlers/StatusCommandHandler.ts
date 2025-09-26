@@ -3,8 +3,10 @@ import { GenerateStatusUseCase } from '../../../application/use-cases/status/Gen
 import { StatusEmbedFormatter } from '../../../presentation/formatters/StatusEmbedFormatter';
 import { StatusResultDto, CoCVersion } from '../../../application/dto/StatusDto';
 import { StatusComponentBuilder } from '../../../presentation/discord/builders/StatusComponentBuilder';
+import { CommandHandler, ValidationError } from '../../../interfaces/patterns/CommandPatterns';
+import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 
-export class StatusCommandHandler {
+export class StatusCommandHandler implements CommandHandler {
     private readonly generateStatusUseCase: GenerateStatusUseCase;
     private readonly formatter: StatusEmbedFormatter;
     
@@ -14,17 +16,50 @@ export class StatusCommandHandler {
     }
     
     /**
-     * ステータス生成処理（並列処理によるパフォーマンス最適化）
+     * ステータス生成処理（統一インターフェース準拠）
+     * @param interaction Discord インタラクション
+     */
+    async handle(interaction: ChatInputCommandInteraction): Promise<void> {
+        // インタラクションから引数を抽出（統一パターン）
+        const type: string = interaction.options.getString('type', true);
+        const characterName = interaction.options.getString('name') ?? 'キャラクター名';
+        const showCustomMenu = interaction.options.getBoolean('custom') ?? false;
+        
+        // StatusTypeからCoCVersionへの厳格な変換（不正値はエラー）
+        let version: CoCVersion;
+        switch (type) {
+            case 'ver6':
+                version = '6';
+                break;
+            case 'ver7':
+                version = '7';
+                break;
+            default:
+                throw new ValidationError(`サポートされていないステータスタイプです: ${type}`, 'INVALID_TYPE');
+        }
+
+        try {
+            await this.executeStatusGeneration(interaction, version, characterName, showCustomMenu);
+        } catch (error) {
+            await UnifiedErrorHandler.handleCommandError(interaction, error, {
+                commandName: 'status',
+                input: { type, characterName, showCustomMenu }
+            });
+        }
+    }
+
+    /**
+     * ステータス生成の実際の処理（並列処理最適化）
      * @param interaction Discord インタラクション
      * @param version CoCのバージョン
      * @param characterName キャラクター名
      * @param showCustomMenu カスタムメニュー表示フラグ
      */
-    async handle(
+    private async executeStatusGeneration(
         interaction: ChatInputCommandInteraction,
         version: CoCVersion,
         characterName: string,
-        showCustomMenu: boolean = false
+        showCustomMenu: boolean
     ): Promise<void> {
         // 並列処理による最適化: Discord API呼び出しとステータス生成を同時実行
         const [replyMessage, statusResult] = await Promise.all([

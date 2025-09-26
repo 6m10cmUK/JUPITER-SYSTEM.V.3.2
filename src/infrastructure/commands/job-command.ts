@@ -6,8 +6,12 @@ import {
     SlashCommandIntegerOption 
 } from 'discord.js';
 import { Command } from '../../interfaces/Command';
-import { JobEmbedFormatter } from '../../presentation/formatters/JobEmbedFormatter';
-import { JobSearchCriteria } from '../../application/dto/JobDto';
+import { JobCommandHandler } from './handlers/JobCommandHandler';
+
+/**
+ * CoC TRPG用の職業検索・生成コマンド
+ * 名前・技能・ポイント検索、一覧表示、ランダム生成機能を提供
+ */
 
 export const command: Command = {
     data: new SlashCommandBuilder()
@@ -57,30 +61,8 @@ export const command: Command = {
         ) as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {
-        const subcommand = interaction.options.getSubcommand() as JobSearchCriteria['subcommand'];
-        await interaction.deferReply();
-
-        const query = interaction.options.getString('query') ?? '';
-        const formatter = new JobEmbedFormatter();
-
-        if (subcommand === 'random') {
-            const count = interaction.options.getInteger('count') ?? 1;
-            const criteria: JobSearchCriteria = {
-                query,
-                subcommand,
-                page: count // randomの場合、pageがcountとして使われる
-            };
-            const display = await formatter.format(interaction, criteria);
-            await interaction.editReply(display);
-            return;
-        }
-
-        const criteria: JobSearchCriteria = {
-            query,
-            subcommand,
-            page: 1
-        };
-        const display = await formatter.format(interaction, criteria);
-        await interaction.editReply(display);
+        // JobCommandHandlerに処理を委譲（statusコマンドと同様のパターン）
+        const handler = new JobCommandHandler();
+        await handler.handle(interaction);
     }
 };

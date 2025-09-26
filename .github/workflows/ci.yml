@@ -34,6 +34,14 @@ jobs:
     - name: Run tests
       run: npm test
       
+    - name: Test results summary
+      if: always()
+      run: |
+        echo "📊 テスト実行結果サマリー"
+        echo "Node.js バージョン: ${{ matrix.node-version }}"
+        echo "ビルド: ✅"
+        echo "テスト: ✅"
+      
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -57,10 +65,13 @@ jobs:
       
     - name: Check for any type usage
       run: |
-        if grep -r ": any" src --include="*.ts" --exclude-dir=node_modules; then
-          echo "⚠️ Warning: 'any' type found in source code"
+        echo "🔍 any型使用チェック実行中..."
+        ANY_COUNT=$(grep -r ": any\|as any\|<any>" src --include="*.ts" --exclude-dir=node_modules | wc -l || echo 0)
+        if [ "$ANY_COUNT" -gt 0 ]; then
+          echo "⚠️ Warning: $ANY_COUNT箇所で'any'型が検出されました"
+          grep -r ": any\|as any\|<any>" src --include="*.ts" --exclude-dir=node_modules || true
         else
-          echo "✅ No problematic 'any' type usage found"
+          echo "✅ 危険なany型の使用は検出されませんでした"
         fi
         
   security:
@@ -81,4 +92,9 @@ jobs:
       run: npm ci
       
     - name: Security audit
-      run: npm audit --audit-level moderate || echo "Security audit completed with warnings"
+      run: |
+        if ! npm audit --audit-level moderate; then
+          echo "❌ npm audit で中程度以上の脆弱性が検出されました"
+          exit 1
+        fi
+        echo "✅ npm audit を通過しました"

@@ -76,8 +76,8 @@ export class StatusEmbedParser {
         // Totalフィールドからの抽出
         const totalField = embed.data!.fields!.find(field => field.name.startsWith('Total:'));
         if (totalField) {
-            // DBの抽出
-            const dbMatch = totalField.value.match(/DB:\s*([+-]?\d+D\d+|[+-]?\d+|±0)/);
+            // DBの抽出（ダイス記法を優先）
+            const dbMatch = totalField.value.match(/DB:\s*([+-]?\d+[dD]\d+|±0|[+-]?\d+)/);
             if (dbMatch) {
                 secondaryStats.DB = dbMatch[1];
             }

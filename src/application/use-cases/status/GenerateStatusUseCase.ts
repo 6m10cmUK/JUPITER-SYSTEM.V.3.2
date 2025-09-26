@@ -12,7 +12,7 @@ export class GenerateStatusUseCase {
             characterName: dto.characterName,
             primaryStats: rollResult.stats,
             primaryStatsDetails: rollResult.details,
-            secondaryStats: secondaryStats as unknown as SecondaryStats,
+            secondaryStats: secondaryStats,
             rerollCount: 0,
             history: ''
         };
@@ -48,7 +48,7 @@ export class GenerateStatusUseCase {
             ...currentStats,
             primaryStats: updatedPrimaryStats,
             primaryStatsDetails: updatedPrimaryStatsDetails,
-            secondaryStats: updatedSecondaryStats as unknown as SecondaryStats,
+            secondaryStats: updatedSecondaryStats,
             rerollCount: currentStats.rerollCount + 1,
             history: currentStats.history + historyEntry
         };
@@ -77,7 +77,7 @@ export class GenerateStatusUseCase {
         return {
             ...currentStats,
             primaryStats: updatedPrimaryStats,
-            secondaryStats: updatedSecondaryStats as unknown as SecondaryStats,
+            secondaryStats: updatedSecondaryStats,
             history: currentStats.history + historyEntry
         };
     }

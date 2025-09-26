@@ -75,7 +75,7 @@ export async function execute(interaction: ButtonInteraction) {
 
     // 二次ステータスを再計算
     const statusService = StatusServiceFactory.create(statusData.version);
-    statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats) as unknown as SecondaryStats;
+    statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats);
 
     // ステータス表示を更新
     const formatter = new StatusEmbedFormatter();

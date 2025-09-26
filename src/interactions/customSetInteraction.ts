@@ -155,7 +155,7 @@ export async function handleCustomSetModal(interaction: ModalSubmitInteraction) 
 
         // 二次ステータスを再計算
         const statusService = StatusServiceFactory.create(statusData.version);
-        statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats) as unknown as SecondaryStats;
+        statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats);
 
         // messageIdとuserIdを設定
         statusData.messageId = messageId;

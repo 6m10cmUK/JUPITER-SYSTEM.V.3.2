@@ -1,4 +1,5 @@
 import { ButtonInteraction } from 'discord.js';
+import { SecondaryStats } from '../application/dto/StatusDto';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
 import { createErrorMessage } from '../presentation/discord/builders/messages';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';

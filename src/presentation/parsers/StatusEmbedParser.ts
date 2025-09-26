@@ -1,5 +1,5 @@
 import { Embed } from 'discord.js';
-import { StatusResultDto } from '../../application/dto/StatusDto';
+import { StatusResultDto, SecondaryStats } from '../../application/dto/StatusDto';
 
 export class StatusEmbedParser {
     parse(embed: Embed): StatusResultDto | null {
@@ -35,7 +35,7 @@ export class StatusEmbedParser {
         });
         
         // 二次ステータスの抽出
-        const secondaryStats: Record<string, any> = {};
+        const secondaryStats: Partial<SecondaryStats> = {};
         
         // 振り直し回数の抽出
         let rerollCount = 0;
@@ -58,7 +58,7 @@ export class StatusEmbedParser {
             characterName,
             primaryStats,
             primaryStatsDetails,
-            secondaryStats,
+            secondaryStats: secondaryStats as SecondaryStats,
             rerollCount,
             history,
             showCustomMenu,
@@ -71,7 +71,7 @@ export class StatusEmbedParser {
         embed: Embed, 
         version: '6' | '7', 
         primaryStats: Record<string, number>,
-        secondaryStats: Record<string, any>
+        secondaryStats: Partial<SecondaryStats>
     ): void {
         // Totalフィールドからの抽出
         const totalField = embed.data!.fields!.find(field => field.name.startsWith('Total:'));

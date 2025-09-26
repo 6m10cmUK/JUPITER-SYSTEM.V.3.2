@@ -1,4 +1,5 @@
 import { BaseStatusService } from './BaseStatusService';
+import { SecondaryStats } from '../../../application/dto/StatusDto';
 
 export class StatusServiceVer6 extends BaseStatusService {
     version: '6' | '7' = '6';
@@ -20,23 +21,19 @@ export class StatusServiceVer6 extends BaseStatusService {
         }
     }
     
-    calculateSecondaryStats(primaryStats: Record<string, number>): Record<string, number> {
-        const result: Record<string, number> = {
+    calculateSecondaryStats(primaryStats: Record<string, number>): SecondaryStats {
+        return {
             HP: Math.ceil((primaryStats.CON + primaryStats.SIZ) / 2),
             MP: primaryStats.POW,
             SAN: primaryStats.POW * 5,
+            DB: this.getDamageBonus(primaryStats.STR, primaryStats.SIZ),
+            JobPoints: primaryStats.EDU * 20,
+            InterestPoints: primaryStats.INT * 10,
             LUC: primaryStats.POW * 5,
             KNW: primaryStats.EDU * 5,
             IDA: primaryStats.INT * 5,
-            MOV: this.calculateMovement(primaryStats),
-            JobPoints: primaryStats.EDU * 20,
-            InterestPoints: primaryStats.INT * 10
+            MOV: this.calculateMovement(primaryStats)
         };
-        
-        // DBは文字列なので別途設定
-        (result as any).DB = this.getDamageBonus(primaryStats.STR, primaryStats.SIZ);
-        
-        return result;
     }
     
     getDamageBonus(str: number, siz: number): string {

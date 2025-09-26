@@ -1,6 +1,7 @@
 import { DiceService } from '../DiceService';
 import { DiceExpression } from '../../value-objects/DiceExpression';
 import { CCBRoll } from '../../entities/DiceRoll';
+import { CoCDiceRoll } from '../../entities/CoCDiceRoll';
 
 describe('DiceService', () => {
     let diceService: DiceService;
@@ -14,18 +15,18 @@ describe('DiceService', () => {
             const expression = new DiceExpression('cc<=80');
             const result = diceService.roll(expression);
             
-            expect(result).toBeInstanceOf(CCBRoll);
-            if (result instanceof CCBRoll) {
+            expect(result).toBeInstanceOf(CoCDiceRoll);
+            if (result instanceof CoCDiceRoll) {
                 expect(result.getTarget()).toBe(80);
                 const roll = result.getTotal();
                 
                 // クリティカルは1のみ
                 if (roll === 1) {
-                    expect(result.isCriticalSuccess()).toBe(true);
+                    expect(result.getSuccessLevel() === 'critical').toBe(true);
                 }
                 // ファンブルは100のみ
                 if (roll === 100) {
-                    expect(result.isCriticalFailure()).toBe(true);
+                    expect(result.getSuccessLevel() === 'fumble').toBe(true);
                 }
             }
         });
@@ -244,9 +245,9 @@ describe('DiceService', () => {
             const expression = new DiceExpression('1d100<=50');
             const result = diceService.roll(expression);
             
-            // CCBRollではなく通常のDiceRoll
+            // CoCDiceRollではなく通常のDiceRoll
             expect(result.constructor.name).toBe('DiceRoll');
-            expect(result).not.toBeInstanceOf(CCBRoll);
+            expect(result).not.toBeInstanceOf(CoCDiceRoll);
         });
     });
 

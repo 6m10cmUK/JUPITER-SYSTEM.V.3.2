@@ -1,5 +1,6 @@
 import { rollDice } from '../../utils/dice';
 import { StatusVersion, BaseStatusData, StatusRollResult } from '../../interfaces/StatusVersion';
+import { SecondaryStats } from '../../../application/dto/StatusDto';
 
 export abstract class BaseStatusService implements StatusVersion {
     abstract version: '6' | '7';
@@ -55,7 +56,7 @@ export abstract class BaseStatusService implements StatusVersion {
         return { stats, version: this.version, details };
     }
     
-    abstract calculateSecondaryStats(primaryStats: Record<string, number>): Record<string, number>;
+    abstract calculateSecondaryStats(primaryStats: Record<string, number>): SecondaryStats;
     abstract getDamageBonus(str: number, siz: number): string;
     
     protected calculateDamageBonusValue(total: number): string {

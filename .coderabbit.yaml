@@ -5,6 +5,9 @@ reviews:
   high_level_summary: true
   poem: false
   review_status: true
+  path_filters:
+    - "!node_modules/**"
+    - "!dist/**"
   auto_review:
     enabled: true
     drafts: false
@@ -17,10 +20,6 @@ reviews:
       instructions: "コマンドの実装とDiscord APIの使用方法をレビューしてください"
     - path: "src/interactions/**"
       instructions: "ユーザーインタラクションの処理と状態管理をレビューしてください"
-    - path: "!node_modules/**"
-      instructions: ""
-    - path: "!dist/**"
-      instructions: ""
 
 knowledge_base:
   opt_out: false

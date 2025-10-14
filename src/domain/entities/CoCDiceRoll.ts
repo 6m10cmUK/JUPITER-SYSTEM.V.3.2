@@ -100,8 +100,8 @@ export class CoCDiceRoll extends DiceRoll {
             return 'fumble';
         }
 
-        // クリティカル判定（1は常にクリティカル、5以下は5分の1以下でクリティカル）
-        if (roll === 1 || (roll <= 5 && roll <= target / 5)) {
+        // クリティカル判定（1は常にクリティカル）
+        if (roll === 1) {
             return 'critical';
         }
 

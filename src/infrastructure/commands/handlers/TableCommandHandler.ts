@@ -4,7 +4,9 @@ import {
     EmbedBuilder,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    ChannelType,
+    ThreadChannel
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../../../presentation/discord/builders/messages';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
@@ -150,16 +152,16 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルが属するカテゴリを取得
-        const currentChannel = interaction.channel;
-        if (!currentChannel || !('parent' in currentChannel) || !currentChannel.parent) {
-            throw new TableError(
-                'このコマンドはカテゴリ内のチャンネルから実行してください', 
-                'INVALID_INPUT'
-            );
+        // 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
+        const ch = interaction.channel;
+        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
+            ? (ch as ThreadChannel).parent
+            : (ch as any)?.parent;
+        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
         }
-
-        const categoryId = currentChannel.parent.id;
+        const categoryId = category.id;
 
         try {
             // サーバープロフィール（displayName）をデフォルト表示名として使用
@@ -211,17 +213,17 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルが属するカテゴリを取得
-        const currentChannel = interaction.channel;
-        if (!currentChannel || !('parent' in currentChannel) || !currentChannel.parent) {
-            throw new TableError(
-                'このコマンドはカテゴリ内のチャンネルから実行してください', 
-                'INVALID_INPUT'
-            );
+        // 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
+        const ch = interaction.channel;
+        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
+            ? (ch as ThreadChannel).parent
+            : (ch as any)?.parent;
+        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
         }
-
-        const categoryId = currentChannel.parent.id;
-        const categoryName = currentChannel.parent.name;
+        const categoryId = category.id;
+        const categoryName = category.name;
 
         // 既存ロール重複チェック
         const existingRole = interaction.guild.roles.cache
@@ -273,21 +275,21 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルの親カテゴリを使用
-        const currentChannel = interaction.channel;
-        if (!currentChannel || !('parent' in currentChannel) || !currentChannel.parent) {
-            throw new TableError(
-                'このコマンドはカテゴリ内のチャンネルから実行してください', 
-                'INVALID_INPUT'
-            );
+        // 現在のチャンネルの親カテゴリを使用（スレッド/通常両対応）
+        const ch = interaction.channel;
+        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
+            ? (ch as ThreadChannel).parent
+            : (ch as any)?.parent;
+        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
         }
-        
-        const categoryId = currentChannel.parent.id;
+        const categoryId = category.id;
 
         try {
             // 削除対象のカテゴリ情報を事前取得
             const targetCategory = interaction.guild.channels.cache.get(categoryId);
-            if (!targetCategory || targetCategory.type !== 4) { // ChannelType.GuildCategory
+            if (!targetCategory || targetCategory.type !== ChannelType.GuildCategory) {
                 throw new TableError('指定されたカテゴリが見つかりません', 'INVALID_INPUT');
             }
 

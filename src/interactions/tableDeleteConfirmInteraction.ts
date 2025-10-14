@@ -1,7 +1,7 @@
 import {
     ButtonInteraction,
     PermissionFlagsBits,
-    MessageFlags
+    ChannelType
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../presentation/discord/builders/messages';
 import { CategoryManagementService } from '../domain/services/CategoryManagementService';
@@ -12,7 +12,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     if (!interaction.guild) {
         await interaction.reply({
             content: '❌ このコマンドはサーバー内でのみ使用できます',
-            flags: MessageFlags.Ephemeral
+            ephemeral: true
         });
         return;
     }
@@ -25,7 +25,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     if (!isOwner && !hasAdminPermission) {
         await interaction.reply({
             content: '❌ このコマンドは管理者またはサーバーオーナーのみ使用できます',
-            flags: MessageFlags.Ephemeral
+            ephemeral: true
         });
         return;
     }
@@ -42,14 +42,14 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         } else {
             await interaction.reply({
                 content: '❌ 不明な操作です',
-                flags: MessageFlags.Ephemeral
+                ephemeral: true
             });
         }
     } catch (error) {
         console.error('テーブル削除操作エラー:', error);
         await interaction.reply({
             content: '❌ 操作の実行中にエラーが発生しました',
-            flags: MessageFlags.Ephemeral
+            ephemeral: true
         });
     }
 }
@@ -63,10 +63,10 @@ async function handleDeleteConfirm(interaction: ButtonInteraction, categoryId: s
 
         // カテゴリ情報を取得
         const targetCategory = interaction.guild!.channels.cache.get(categoryId);
-        if (!targetCategory || targetCategory.type !== 4) {
+        if (!targetCategory || targetCategory.type !== ChannelType.GuildCategory) {
             await interaction.followUp({
                 content: '❌ 指定されたカテゴリが見つかりません',
-                flags: MessageFlags.Ephemeral
+                ephemeral: true
             });
             return;
         }
@@ -111,7 +111,7 @@ async function handleDeleteConfirm(interaction: ButtonInteraction, categoryId: s
         console.error('削除実行エラー:', error);
         await interaction.followUp({
             content: `❌ カテゴリ削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
-            flags: MessageFlags.Ephemeral
+            ephemeral: true
         });
     }
 }
@@ -143,7 +143,7 @@ async function handleDeleteCancel(interaction: ButtonInteraction, categoryId: st
         console.error('削除キャンセルエラー:', error);
         await interaction.reply({
             content: '❌ キャンセル処理でエラーが発生しました',
-            flags: MessageFlags.Ephemeral
+            ephemeral: true
         });
     }
 }

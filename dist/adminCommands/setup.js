@@ -84,8 +84,7 @@ async function execute(message, guildId) {
             "roll",
             "status",
             "name",
-            "category-create",
-            "category-delete"
+            "table"
         ];
     }
     if (message.content.split(' ')[1] === '-standard' || message.content.split(' ')[1] === '-s') {

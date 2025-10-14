@@ -1,11 +1,14 @@
 import { 
     ChatInputCommandInteraction,
     PermissionFlagsBits,
-    ChannelType,
-    OverwriteType
+    ChannelType
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../../../presentation/discord/builders/messages';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
+import { 
+    CategoryManagementService, 
+    CategoryManagementError 
+} from '../../../domain/services/CategoryManagementService';
 
 /**
  * カテゴリー操作コマンドのオプション型定義
@@ -18,7 +21,7 @@ export interface CategoryCommandOptions {
 }
 
 /**
- * カテゴリー操作エラー
+ * カテゴリー操作エラー（後方互換性のため保持）
  */
 export class CategoryError extends Error {
     constructor(
@@ -31,8 +34,8 @@ export class CategoryError extends Error {
 }
 
 /**
- * カテゴリー操作コマンドハンドラー（統一アーキテクチャ）
- * 作成・削除の両方を統一的に処理
+ * カテゴリー操作コマンドハンドラー（完全リファクタ版）
+ * 新しいCategoryManagementServiceを使用
  */
 export class CategoryCommandHandler {
     /**
@@ -74,12 +77,12 @@ export class CategoryCommandHandler {
     }
 
     /**
-     * カテゴリー作成処理
+     * カテゴリー作成処理（新CategoryManagementService使用）
      * @param interaction Discord インタラクション
      */
     private async handleCategoryCreate(interaction: ChatInputCommandInteraction): Promise<void> {
         const name = interaction.options.getString('name') ?? '';
-        const rawHandOut = interaction.options.getInteger('hand-out') ?? 0;
+        const rawHandOut = interaction.options.getInteger('handout') ?? 0;
         const handOut = Math.min(Math.max(rawHandOut, 0), 10); // 0〜10に制限
 
         if (!name.trim()) {
@@ -91,41 +94,18 @@ export class CategoryCommandHandler {
         }
 
         try {
-            // メインカテゴリー作成
-            const category = await interaction.guild.channels.create({
-                name: name,
-                type: ChannelType.GuildCategory
-            });
-
-            // 秘匿チャンネル作成
-            const createdChannels = [];
-            for (let i = 1; i <= handOut; i++) {
-                const handOutChannel = await interaction.guild.channels.create({
-                    name: `秘匿${i}`,
-                    type: ChannelType.GuildText,
-                    parent: category.id,
-                    permissionOverwrites: [
-                        {
-                            id: interaction.guild.roles.everyone.id,
-                            type: OverwriteType.Role,
-                            deny: [PermissionFlagsBits.ViewChannel]
-                        }
-                    ]
-                });
-                createdChannels.push(`<#${handOutChannel.id}>`);
-            }
-
-            // 成功メッセージ
-            let successMessage = `カテゴリ「${name}」を作成しました。`;
-            if (createdChannels.length > 0) {
-                successMessage += `\n秘匿チャンネル: ${createdChannels.join(', ')}`;
-            }
+            // 新しいCategoryManagementServiceを使用
+            const categoryService = new CategoryManagementService(interaction.guild);
+            const result = await categoryService.createCategoryWithRoles(name, handOut);
 
             await interaction.editReply(
-                createSuccessMessage(interaction, 'CATEGORY CREATED', successMessage)
+                createSuccessMessage(interaction, 'CATEGORY CREATED', result.summary)
             );
 
         } catch (error) {
+            if (error instanceof CategoryManagementError) {
+                throw new CategoryError(error.message, 'OPERATION_FAILED');
+            }
             throw new CategoryError(
                 `カテゴリ作成に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
                 'OPERATION_FAILED'
@@ -134,7 +114,7 @@ export class CategoryCommandHandler {
     }
 
     /**
-     * カテゴリー削除処理
+     * カテゴリー削除処理（新CategoryManagementService使用）
      * @param interaction Discord インタラクション
      */
     private async handleCategoryDelete(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -149,18 +129,48 @@ export class CategoryCommandHandler {
         }
 
         try {
-            const category = interaction.guild.channels.cache.get(categoryId);
-            if (!category || category.type !== ChannelType.GuildCategory) {
+            // 削除対象のカテゴリ情報を事前取得
+            const targetCategory = interaction.guild.channels.cache.get(categoryId);
+            if (!targetCategory || targetCategory.type !== ChannelType.GuildCategory) {
                 throw new CategoryError('指定されたカテゴリが見つかりません', 'INVALID_INPUT');
             }
 
-            await category.delete();
+            const categoryName = targetCategory.name;
+            const channelCount = targetCategory.children.cache.size;
+
+            // 関連ロール数を事前計算
+            const relatedRoles = interaction.guild.roles.cache
+                .filter(role => role.name.startsWith(`${categoryName}_`));
+            const roleCount = relatedRoles.size;
+
+            // 削除開始メッセージを事前に送信
+            const deletingMessage = [
+                `**カテゴリ「${categoryName}」の削除を開始しています...**`,
+                ``,
+                `削除予定チャンネル数: ${channelCount}`,
+                `削除予定ロール数: ${roleCount}`,
+                ``,
+                `⚠️ この操作は取り消せません`
+            ].join('\n');
 
             await interaction.editReply(
-                createSuccessMessage(interaction, 'CATEGORY DELETED', `カテゴリ「${category.name}」を削除しました。`)
+                createSuccessMessage(interaction, 'DELETING CATEGORY', deletingMessage)
             );
 
+            // 少し待機してから削除実行（ユーザーがメッセージを確認できるように）
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // 削除実行（メッセージは削除後に編集不可能になるため、事前通知で完了）
+            const categoryService = new CategoryManagementService(interaction.guild);
+            await categoryService.deleteCategory(categoryId);
+
+            // 削除後の編集は不可能なため、ここではログ出力のみ
+            console.log(`カテゴリ「${categoryName}」の削除が完了しました。チャンネル: ${channelCount}個、ロール: ${roleCount}個`);
+
         } catch (error) {
+            if (error instanceof CategoryManagementError) {
+                throw new CategoryError(error.message, 'OPERATION_FAILED');
+            }
             throw new CategoryError(
                 `カテゴリ削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
                 'OPERATION_FAILED'
@@ -219,7 +229,7 @@ export class CategoryCommandHandler {
         return {
             operation,
             name: interaction.options.getString('name') ?? '',
-            handOut: interaction.options.getInteger('hand-out') ?? undefined,
+            handOut: interaction.options.getInteger('handout') ?? undefined,
             categoryId: interaction.options.getString('category-id') ?? undefined
         };
     }

@@ -53,8 +53,7 @@ export async function execute(message: Message, guildId: string) {
             "roll",
             "status",
             "name",
-            "category-create",
-            "category-delete"
+            "table"
         ]
     }
 

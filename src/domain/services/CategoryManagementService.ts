@@ -21,7 +21,8 @@ export type CategoryErrorCode =
     | 'DUPLICATE_ROLE'
     | 'INVALID_PARTY_NUMBER'
     | 'USER_NOT_FOUND'
-    | 'INSUFFICIENT_PERMISSIONS';
+    | 'INSUFFICIENT_PERMISSIONS'
+    | 'OPERATION_FAILED';
 
 /**
  * カテゴリ管理システム専用エラー
@@ -508,6 +509,7 @@ export class CategoryManagementService {
             );
         }
     }
+
 
     /**
      * カテゴリ作成サマリーを生成

@@ -134,6 +134,8 @@ export class DiscordAdapter {
             } else if (interaction.isStringSelectMenu() || interaction.isButton()) {
                 const [prefix] = interaction.customId.split(':');
                 console.log(`Processing interaction with customId: ${interaction.customId}, prefix: ${prefix}`);
+                
+
                 const handler = this.interactionHandlers.get(prefix);
 
                 if (handler) {

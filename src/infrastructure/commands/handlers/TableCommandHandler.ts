@@ -15,12 +15,16 @@ import {
     CategoryManagementService, 
     CategoryManagementError 
 } from '../../../domain/services/CategoryManagementService';
+import { 
+    ChannelLogService, 
+    ChannelLogError 
+} from '../../../domain/services/ChannelLogService';
 
 /**
  * テーブル管理コマンドのオプション型定義
  */
 export interface TableCommandOptions {
-    readonly subcommand: 'setup' | 'handout' | 'add' | 'delete';
+    readonly subcommand: 'setup' | 'handout' | 'add' | 'delete' | 'log';
     readonly name?: string;
     readonly handout?: number;
     readonly voice?: boolean;
@@ -81,6 +85,9 @@ export class TableCommandHandler {
                     break;
                 case 'delete':
                     await this.handleDelete(interaction);
+                    break;
+                case 'log':
+                    await this.handleLog(interaction);
                     break;
                 default:
                     throw new TableError('不明なサブコマンドです', 'INVALID_INPUT');
@@ -361,6 +368,65 @@ export class TableCommandHandler {
             }
             throw new TableError(
                 `削除確認の表示に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+                'OPERATION_FAILED'
+            );
+        }
+    }
+
+    /**
+     * log: ログ収集処理
+     * @param interaction Discord インタラクション
+     */
+    private async handleLog(interaction: ChatInputCommandInteraction): Promise<void> {
+        if (!interaction.guild) {
+            throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
+        }
+
+        // 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
+        const ch = interaction.channel;
+        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
+            ? (ch as ThreadChannel).parent
+            : (ch as any)?.parent;
+        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
+        if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
+        }
+        const categoryId = category.id;
+        const categoryName = category.name;
+
+        try {
+            // ログ収集・保存実行（進捗メッセージなし）
+            const logService = new ChannelLogService(interaction.guild);
+            const result = await logService.collectAndSaveCategoryLogs(categoryId);
+
+            // シンプルな完了メッセージ
+            let completionMessage = `✅ **ログ保存完了** → <#${result.logChannel.id}>`;
+
+            if (result.errors.length > 0) {
+                completionMessage += `\n⚠️ 一部エラー: ${result.errors.length}件`;
+            }
+
+            await interaction.editReply({
+                content: completionMessage
+            });
+
+            // 成功ログ
+            console.log(`ログ収集完了: カテゴリ「${categoryName}」`, {
+                totalMessages: result.totalMessages,
+                totalAttachments: result.totalAttachments,
+                processedChannels: result.processedChannels,
+                errors: result.errors.length,
+                executor: interaction.user.username,
+                executorId: interaction.user.id,
+                timestamp: new Date().toISOString()
+            });
+
+        } catch (error) {
+            if (error instanceof ChannelLogError) {
+                throw new TableError(error.message, 'OPERATION_FAILED');
+            }
+            throw new TableError(
+                `ログ収集に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
                 'OPERATION_FAILED'
             );
         }

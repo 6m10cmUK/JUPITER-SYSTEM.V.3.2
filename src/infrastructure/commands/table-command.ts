@@ -94,6 +94,13 @@ export const command: Command = {
             subcommand
                 .setName('delete')
                 .setDescription('現在のカテゴリを完全削除（チャンネル・ロール含む）')
+        )
+        
+        // log サブコマンド（ログ収集）
+        .addSubcommand((subcommand: SlashCommandSubcommandBuilder) =>
+            subcommand
+                .setName('log')
+                .setDescription('現在のカテゴリのログを収集・保存')
         ) as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {

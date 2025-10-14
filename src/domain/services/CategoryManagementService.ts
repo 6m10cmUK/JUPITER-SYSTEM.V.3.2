@@ -256,10 +256,14 @@ export class CategoryManagementService {
                 SendMessages: true
             });
 
-            // ユーザー専用チャンネル作成
-            const finalDisplayName = displayName || user.username;
+            // ユーザー専用チャンネル作成（ho{番号}-{ニックネーム}形式）
+            const member = this.guild.members.cache.get(user.id);
+            const nickname = member ? member.displayName : user.username;
+            const finalDisplayName = displayName || nickname;
+            const channelName = `ho${handoutNumber}-${finalDisplayName}`;
+            
             const userChannel = await this.guild.channels.create({
-                name: finalDisplayName,
+                name: channelName,
                 type: ChannelType.GuildText,
                 parent: category.id,
                 permissionOverwrites: [

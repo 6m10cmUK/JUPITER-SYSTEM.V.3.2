@@ -8,8 +8,11 @@ import { Command } from '../../interfaces/Command';
 import { CategoryCommandHandler } from './handlers/CategoryCommandHandler';
 
 /**
- * カテゴリー作成コマンド
- * Discordサーバーにカテゴリーと秘匿チャンネルを作成
+ * カテゴリー作成コマンド（v3.2拡張版）
+ * CoCシナリオ用カテゴリ・ロール・基本チャンネル・ハンドアウトチャンネルを一括作成
+ * - {カテゴリ名}_1, {カテゴリ名}_通過者 ロール作成
+ * - 概要、日程、第1陣、通過者 チャンネル作成
+ * - ho-1〜ho-{n} ハンドアウトチャンネル作成（オプション）
  */
 
 export const command: Command = {
@@ -22,8 +25,8 @@ export const command: Command = {
                 .setRequired(true)
         )
         .addIntegerOption((option: SlashCommandIntegerOption) =>
-            option.setName('hand-out')
-                .setDescription('秘匿チャンネルの数')
+            option.setName('handout')
+                .setDescription('ハンドアウトチャンネルの数 (0-10)')
                 .setMinValue(0)
                 .setMaxValue(10)
                 .setRequired(false)

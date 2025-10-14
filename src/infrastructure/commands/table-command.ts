@@ -4,7 +4,8 @@ import {
     SlashCommandSubcommandBuilder,
     SlashCommandStringOption,
     SlashCommandIntegerOption,
-    SlashCommandUserOption
+    SlashCommandUserOption,
+    SlashCommandBooleanOption
 } from 'discord.js';
 import { Command } from '../../interfaces/Command';
 import { TableCommandHandler } from './handlers/TableCommandHandler';
@@ -40,6 +41,11 @@ export const command: Command = {
                         .setDescription('ハンドアウトチャンネルの数 (0-10)')
                         .setMinValue(0)
                         .setMaxValue(10)
+                        .setRequired(false)
+                )
+                .addBooleanOption((option: SlashCommandBooleanOption) =>
+                    option.setName('voice')
+                        .setDescription('ボイスチャンネルを作成するか（セッション中・秘匿）')
                         .setRequired(false)
                 )
         )

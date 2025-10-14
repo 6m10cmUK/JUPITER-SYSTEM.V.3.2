@@ -20,6 +20,7 @@ export interface TableCommandOptions {
     readonly subcommand: 'setup' | 'handout' | 'add' | 'delete';
     readonly name?: string;
     readonly handout?: number;
+    readonly voice?: boolean;
     readonly user?: any;
     readonly number?: number;
     readonly displayName?: string;
@@ -99,6 +100,7 @@ export class TableCommandHandler {
         const name = interaction.options.getString('name') ?? '';
         const rawHandout = interaction.options.getInteger('handout') ?? 0;
         const handout = Math.min(Math.max(rawHandout, 0), 10); // 0〜10に制限
+        const voice = interaction.options.getBoolean('voice') ?? false; // デフォルトfalse
 
         if (!name.trim()) {
             throw new TableError('カテゴリ名を入力してください', 'INVALID_INPUT');
@@ -110,7 +112,7 @@ export class TableCommandHandler {
 
         try {
             const categoryService = new CategoryManagementService(interaction.guild);
-            const result = await categoryService.createCategoryWithRoles(name, handout);
+            const result = await categoryService.createCategoryWithRoles(name, handout, voice);
 
             await interaction.editReply(
                 createSuccessMessage(interaction, 'TABLE SETUP COMPLETED', result.summary)
@@ -417,6 +419,7 @@ export class TableCommandHandler {
             subcommand,
             name: interaction.options.getString('name') ?? undefined,
             handout: interaction.options.getInteger('handout') ?? undefined,
+            voice: interaction.options.getBoolean('voice') ?? undefined,
             user: interaction.options.getUser('user') ?? undefined,
             number: interaction.options.getInteger('number') ?? undefined,
             displayName: interaction.options.getString('display_name') ?? undefined,

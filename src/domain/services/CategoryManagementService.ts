@@ -3,6 +3,7 @@ import {
     Role,
     CategoryChannel,
     TextChannel,
+    VoiceChannel,
     User,
     ChannelType,
     OverwriteType,
@@ -53,6 +54,10 @@ export interface CategoryCreationResult {
         firstParty: TextChannel;
         passedMembers: TextChannel;
         handouts: TextChannel[];
+        voices?: {
+            session: VoiceChannel;
+            secret: VoiceChannel;
+        };
     };
     summary: string;
 }
@@ -98,9 +103,10 @@ export class CategoryManagementService {
      * カテゴリとロール、基本チャンネルを作成
      * @param name カテゴリ名
      * @param handoutCount ハンドアウトチャンネル数 (0-10)
+     * @param createVoice ボイスチャンネルを作成するか
      * @returns カテゴリ作成結果
      */
-    async createCategoryWithRoles(name: string, handoutCount: number = 0): Promise<CategoryCreationResult> {
+    async createCategoryWithRoles(name: string, handoutCount: number = 0, createVoice: boolean = false): Promise<CategoryCreationResult> {
         try {
             // 並列でロール作成
             const [firstPartyRole, passedMembersRole] = await Promise.all([
@@ -151,11 +157,21 @@ export class CategoryManagementService {
                 handouts.push(...await Promise.all(handoutPromises));
             }
 
+            // ボイスチャンネル作成（オプション）
+            let voices: { session: VoiceChannel; secret: VoiceChannel } | undefined;
+            if (createVoice) {
+                const [sessionVoice, secretVoice] = await Promise.all([
+                    this.createVoiceChannel(category, 'セッション中', [firstPartyRole, passedMembersRole]),
+                    this.createVoiceChannel(category, '秘匿', [passedMembersRole])
+                ]);
+                voices = { session: sessionVoice, secret: secretVoice };
+            }
+
             // サマリー作成
-            const summary = this.createCategorySummary(name, handoutCount, {
+            const summary = this.createCategorySummary(name, handoutCount, createVoice, {
                 category,
                 roles: { firstParty: firstPartyRole, passedMembers: passedMembersRole },
-                channels: { overview, schedule, firstParty, passedMembers, handouts }
+                channels: { overview, schedule, firstParty, passedMembers, handouts, voices }
             });
 
             return {
@@ -169,7 +185,8 @@ export class CategoryManagementService {
                     schedule,
                     firstParty,
                     passedMembers,
-                    handouts
+                    handouts,
+                    voices
                 },
                 summary
             };
@@ -510,13 +527,51 @@ export class CategoryManagementService {
         }
     }
 
+    /**
+     * ボイスチャンネルを作成
+     */
+    private async createVoiceChannel(
+        category: CategoryChannel, 
+        name: string, 
+        allowedRoles: Role[]
+    ): Promise<VoiceChannel> {
+        try {
+            const permissionOverwrites = [
+                {
+                    id: this.guild.roles.everyone.id,
+                    type: OverwriteType.Role as const,
+                    deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
+                },
+                ...allowedRoles.map(role => ({
+                    id: role.id,
+                    type: OverwriteType.Role as const,
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
+                }))
+            ];
+
+            return await this.guild.channels.create({
+                name,
+                type: ChannelType.GuildVoice,
+                parent: category.id,
+                permissionOverwrites
+            });
+        } catch (error) {
+            throw new CategoryManagementError(
+                `ボイスチャンネル作成に失敗しました: ${name}`,
+                'CHANNEL_CREATION_FAILED',
+                { name, categoryId: category.id, originalError: error }
+            );
+        }
+    }
+
 
     /**
      * カテゴリ作成サマリーを生成
      */
     private createCategorySummary(
         name: string, 
-        handoutCount: number, 
+        handoutCount: number,
+        createVoice: boolean,
         result: Omit<CategoryCreationResult, 'summary'>
     ): string {
         const lines = [
@@ -538,6 +593,12 @@ export class CategoryManagementService {
             result.channels.handouts.forEach(channel => {
                 lines.push(`- ${channel.name}`);
             });
+        }
+
+        if (result.channels.voices) {
+            lines.push(``, `**ボイスチャンネル:**`);
+            lines.push(`- 🔊 ${result.channels.voices.session.name}`);
+            lines.push(`- 🤫 ${result.channels.voices.secret.name}`);
         }
 
         return lines.join('\n');

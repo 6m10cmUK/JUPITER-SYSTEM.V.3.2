@@ -192,10 +192,11 @@ export class CategoryManagementService {
             };
 
         } catch (error) {
+            if (error instanceof CategoryManagementError) throw error;
             throw new CategoryManagementError(
                 `カテゴリ作成に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
-                'CATEGORY_NOT_FOUND',
-                { name, handoutCount, originalError: error }
+                'OPERATION_FAILED',
+                { name, handoutCount, createVoice, originalError: error }
             );
         }
     }
@@ -423,12 +424,10 @@ export class CategoryManagementService {
             };
 
         } catch (error) {
-            if (error instanceof CategoryManagementError) {
-                throw error;
-            }
+            if (error instanceof CategoryManagementError) throw error;
             throw new CategoryManagementError(
                 `カテゴリ削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
-                'CATEGORY_NOT_FOUND',
+                'OPERATION_FAILED',
                 { categoryId, originalError: error }
             );
         }

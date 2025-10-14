@@ -37,8 +37,8 @@ export class NameCommandHandler {
             names.forEach((name, index) => {
                 embed.addFields({
                     name: `${index + 1}. ${name.full}`,
-                    value: `${name.first} ${name.last}`,
-                    inline: true
+                    value: `\u200b`,
+                    inline: false
                 });
             });
 
@@ -80,17 +80,29 @@ export class NameCommandHandler {
         const names = [];
         
         for (let i = 0; i < count; i++) {
-            // ランダム名前生成ロジック（簡略化）
-            const firstNames = nameData[region]?.[type]?.first || ['太郎', '次郎'];
-            const lastNames = nameData[region]?.last || ['田中', '佐藤'];
+            let firstName: string;
+            let lastName: string;
             
-            const firstName = firstNames[rollDice(1, firstNames.length)[0] - 1];
-            const lastName = lastNames[rollDice(1, lastNames.length)[0] - 1];
+            if (region === 'en') {
+                // 英語名の場合
+                const firstNames = nameData.given_en?.[type] || ['John', 'Jane'];
+                const lastNames = nameData.surname_en || ['Smith', 'Johnson'];
+                
+                firstName = firstNames[rollDice(1, firstNames.length)[0] - 1];
+                lastName = lastNames[rollDice(1, lastNames.length)[0] - 1];
+            } else {
+                // 日本語名の場合（デフォルト）
+                const firstNames = nameData.mei?.[type] || ['太郎', '花子'];
+                const lastNames = nameData.sei || ['田中', '佐藤'];
+                
+                firstName = firstNames[rollDice(1, firstNames.length)[0] - 1];
+                lastName = lastNames[rollDice(1, lastNames.length)[0] - 1];
+            }
             
             names.push({
                 first: firstName,
                 last: lastName,
-                full: `${lastName} ${firstName}`
+                full: region === 'en' ? `${firstName} ${lastName}` : `${lastName} ${firstName}`
             });
         }
         

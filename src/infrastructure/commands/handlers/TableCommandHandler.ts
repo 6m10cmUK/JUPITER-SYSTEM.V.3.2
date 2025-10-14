@@ -6,7 +6,8 @@ import {
     ButtonBuilder,
     ButtonStyle,
     ChannelType,
-    ThreadChannel
+    ThreadChannel,
+    User
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../../../presentation/discord/builders/messages';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
@@ -23,7 +24,7 @@ export interface TableCommandOptions {
     readonly name?: string;
     readonly handout?: number;
     readonly voice?: boolean;
-    readonly user?: any;
+    readonly user?: User;
     readonly number?: number;
     readonly displayName?: string;
     readonly partyNumber?: number;

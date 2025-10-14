@@ -31,7 +31,13 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     }
 
     // customIdから操作とカテゴリIDを抽出
-    const [, action, categoryId] = interaction.customId.split(':');
+    const parts = interaction.customId.split(':');
+    const action = parts[1];
+    const categoryId = parts[2];
+    if (!action || !categoryId) {
+        await interaction.reply({ content: '❌ 無効な操作です', ephemeral: true });
+        return;
+    }
     console.log(`Table delete action: ${action}, categoryId: ${categoryId}`);
 
     try {
@@ -47,10 +53,12 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         }
     } catch (error) {
         console.error('テーブル削除操作エラー:', error);
-        await interaction.reply({
-            content: '❌ 操作の実行中にエラーが発生しました',
-            ephemeral: true
-        });
+        const payload = { content: '❌ 操作の実行中にエラーが発生しました', ephemeral: true };
+        if (interaction.deferred || interaction.replied) {
+            await interaction.followUp(payload);
+        } else {
+            await interaction.reply(payload);
+        }
     }
 }
 
@@ -141,9 +149,11 @@ async function handleDeleteCancel(interaction: ButtonInteraction, categoryId: st
 
     } catch (error) {
         console.error('削除キャンセルエラー:', error);
-        await interaction.reply({
-            content: '❌ キャンセル処理でエラーが発生しました',
-            ephemeral: true
-        });
+        const payload = { content: '❌ キャンセル処理でエラーが発生しました', ephemeral: true };
+        if (interaction.deferred || interaction.replied) {
+            await interaction.followUp(payload);
+        } else {
+            await interaction.reply(payload);
+        }
     }
 }

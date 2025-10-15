@@ -1,31 +1,19 @@
 import { 
     ChatInputCommandInteraction, 
-    SlashCommandBuilder,
-    SlashCommandRoleOption,
-    SlashCommandUserOption,
+    SlashCommandBuilder
 } from 'discord.js';
 import { Command } from '../../interfaces/Command';
 import { SimpleCommandHandler } from './handlers/SimpleCommandHandler';
 
 /**
  * システムテストコマンド（hoge）
- * ユーザーにロール追加のテスト機能
+ * ボイスチャンネル削除機能（「秘匿」「セッション中」対象）
  */
 
 export const command: Command = {
     data: new SlashCommandBuilder()
         .setName('hoge')
-        .setDescription('システムテスト - ユーザーにロール追加')
-        .addUserOption((option: SlashCommandUserOption) =>
-            option.setName('user')
-                .setDescription('ユーザー')
-                .setRequired(true)
-        )
-        .addRoleOption((option: SlashCommandRoleOption) =>
-            option.setName('role')
-                .setDescription('ロール')
-                .setRequired(true)
-        ) as SlashCommandBuilder,
+        .setDescription('テスト機能 - 秘匿・セッション中ボイスチャンネル削除') as SlashCommandBuilder,
         
     async execute(interaction: ChatInputCommandInteraction) {
         // SimpleCommandHandlerに処理を委譲（統一パターン）

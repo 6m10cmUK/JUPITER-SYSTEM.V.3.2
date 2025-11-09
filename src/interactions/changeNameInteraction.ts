@@ -17,12 +17,6 @@ export const prefix = 'changeName';
 export async function execute(interaction: ButtonInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
-    // 権限チェック
-    if (interaction.user.id !== userId) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE NAME FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
-
     const modal = new ModalBuilder()
         .setCustomId(`nameChangeModal:${messageId}:${userId}`)
         .setTitle('キャラクター名変更');
@@ -45,12 +39,6 @@ export async function handleNameChangeModal(interaction: ModalSubmitInteraction)
 
     const [_, messageId, userId] = interaction.customId.split(':');
     const newName = interaction.fields.getTextInputValue('name');
-
-    // 権限チェック
-    if (interaction.user.id !== userId) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE NAME FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 

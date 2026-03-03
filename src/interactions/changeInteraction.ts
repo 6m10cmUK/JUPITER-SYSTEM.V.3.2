@@ -1,13 +1,14 @@
-import { 
-    StringSelectMenuInteraction, 
-    ActionRowBuilder, 
+import {
+    StringSelectMenuInteraction,
+    ActionRowBuilder,
     StringSelectMenuBuilder
 } from 'discord.js';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
+import { getStatOrder } from '../domain/constants/StatOrder';
 
 export const prefix = 'change';
 
@@ -15,11 +16,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    const user = await interaction.client.users.fetch(userId);
-    if (user.id !== interaction.user.id) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -67,9 +64,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     await message.edit({ embeds: [updatedEmbed], components });
 
     // 入れ替え先選択メニューを表示
-    const statOrder = statusData.version === '6' 
-        ? ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU']
-        : ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC'];
+    const statOrder = getStatOrder(statusData.version);
 
     const rerollEmbed = generateEmbed(interaction)
         .setTitle(`${selectedStat}: ${selectedValue} ⇄`);

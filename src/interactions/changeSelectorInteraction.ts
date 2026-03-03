@@ -5,7 +5,7 @@ import {
     ButtonStyle
 } from 'discord.js';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 
 export const prefix = 'changeSelector';
@@ -14,11 +14,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, stat, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    const user = await interaction.client.users.fetch(userId);
-    if (user.id !== interaction.user.id) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 

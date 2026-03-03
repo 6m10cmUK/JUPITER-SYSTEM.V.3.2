@@ -1,10 +1,10 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandStringOption } from 'discord.js';
-import { Command } from '../../../interfaces/Command';
+import { Command } from '../../../shared/interfaces/Command';
 import { RollDiceUseCase } from '../../../application/use-cases/dice/RollDiceUseCase';
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFormatter';
 import { DiceSystemError, InvalidExpressionError } from '../../../shared/errors/DiceSystemError';
-import { CommandHandler } from '../../../interfaces/patterns/CommandPatterns';
+import { CommandHandler } from '../../../shared/interfaces/patterns/CommandPatterns';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 
 /**
@@ -13,9 +13,6 @@ import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler'
  */
 
 export class RollCommandHandler implements Command, CommandHandler {
-    private readonly rollDiceUseCase: RollDiceUseCase;
-    private readonly formatter: DiceEmbedFormatter;
-
     data = new SlashCommandBuilder()
         .setName('roll')
         .setDescription('ダイスを振る')
@@ -25,12 +22,10 @@ export class RollCommandHandler implements Command, CommandHandler {
                 .setRequired(true)
         ) as SlashCommandBuilder;
 
-    constructor() {
-        // シングルトンパターンによる最適化
-        const diceService = new DiceService(); // DiceService内部でシングルトンファクトリを使用
-        this.rollDiceUseCase = new RollDiceUseCase(diceService);
-        this.formatter = new DiceEmbedFormatter();
-    }
+    constructor(
+        private readonly rollDiceUseCase: RollDiceUseCase,
+        private readonly formatter: DiceEmbedFormatter
+    ) {}
 
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
         const expression = interaction.options.getString('set') ?? '';
@@ -85,4 +80,3 @@ export class RollCommandHandler implements Command, CommandHandler {
     }
 }
 
-export const command = new RollCommandHandler();

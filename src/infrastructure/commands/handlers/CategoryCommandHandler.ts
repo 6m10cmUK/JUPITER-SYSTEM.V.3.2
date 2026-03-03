@@ -1,14 +1,15 @@
-import { 
+import {
     ChatInputCommandInteraction,
     PermissionFlagsBits,
     ChannelType
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../../../presentation/discord/builders/messages';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
-import { 
-    CategoryManagementService, 
-    CategoryManagementError 
+import {
+    CategoryManagementService,
+    CategoryManagementError
 } from '../../../domain/services/CategoryManagementService';
+import { GuildServiceFactory } from '../../factories/CommandHandlerFactory';
 
 /**
  * カテゴリー操作コマンドのオプション型定義
@@ -38,6 +39,8 @@ export class CategoryError extends Error {
  * 新しいCategoryManagementServiceを使用
  */
 export class CategoryCommandHandler {
+    constructor(private readonly categoryServiceFactory: GuildServiceFactory<CategoryManagementService>) {}
+
     /**
      * カテゴリー操作処理を実行
      * @param interaction Discord インタラクション
@@ -95,7 +98,7 @@ export class CategoryCommandHandler {
 
         try {
             // 新しいCategoryManagementServiceを使用
-            const categoryService = new CategoryManagementService(interaction.guild);
+            const categoryService = this.categoryServiceFactory(interaction.guild);
             const result = await categoryService.createCategoryWithRoles(name, handOut);
 
             await interaction.editReply(
@@ -161,7 +164,7 @@ export class CategoryCommandHandler {
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             // 削除実行（メッセージは削除後に編集不可能になるため、事前通知で完了）
-            const categoryService = new CategoryManagementService(interaction.guild);
+            const categoryService = this.categoryServiceFactory(interaction.guild);
             await categoryService.deleteCategory(categoryId);
 
             // 削除後の編集は不可能なため、ここではログ出力のみ

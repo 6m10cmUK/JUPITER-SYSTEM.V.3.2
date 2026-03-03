@@ -4,7 +4,7 @@ import {
     SlashCommandBuilder,
     ColorResolvable,
 } from 'discord.js';
-import { Command } from '../../interfaces/Command';
+import { Command } from '../../shared/interfaces/Command';
 import axios from 'axios';
 
 
@@ -23,7 +23,7 @@ export const command: Command = {
 
             const attachment = interaction.options.getAttachment('logfile');
             if (!attachment) {
-                console.error('Attachment is null');
+                await interaction.editReply({ content: 'ログファイルが添付されていません。' });
                 return;
             }
 

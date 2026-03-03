@@ -36,7 +36,7 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
         },
         {
           name: '試行回数',
-          value: `${game.guesses.length}回`,
+          value: `${game.getGuessCount()}回`,
           inline: true
         }
       ],

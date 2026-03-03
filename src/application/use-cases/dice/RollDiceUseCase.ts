@@ -1,6 +1,6 @@
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceExpression } from '../../../domain/value-objects/DiceExpression';
-import { DiceRollRequest, DiceRollResponse, DiceRollDto } from '../../dto/DiceRollDto';
+import { DiceOutcome, DiceRollDto, DiceRollRequest, DiceRollResponse } from '../../dto/DiceRollDto';
 import { CCBRoll, ChoiceRoll } from '../../../domain/entities/DiceRoll';
 import { CoCDiceRoll, FARRoll } from '../../../domain/entities/CoCDiceRoll';
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
@@ -12,8 +12,8 @@ export class RollDiceUseCase {
     async execute(request: DiceRollRequest): Promise<DiceRollResponse> {
         const normalizedExpression = convertFullWidthToHalfWidth(request.expression);
         const diceExpression = new DiceExpression(normalizedExpression);
-        
-        const rolls = diceExpression.hasRepeat() 
+
+        const rolls = diceExpression.hasRepeat()
             ? this.diceService.rollMultiple(diceExpression)
             : [this.diceService.roll(diceExpression)];
 
@@ -64,8 +64,8 @@ export class RollDiceUseCase {
      */
     private mapCCBToDto(roll: CCBRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
-        let color = 0x888888;
-        
+        let outcome: DiceOutcome = 'normal';
+
         // 故障判定の場合（型安全なアクセス）
         const breakdownNumber = roll.getBreakdownNumber();
         if (breakdownNumber !== undefined) {
@@ -73,21 +73,20 @@ export class RollDiceUseCase {
             if (roll.getTotal() >= breakdownNumber) {
                 if (roll.isCriticalFailure()) {
                     result += `＞ **ファンブル＆故障** `;
-                    color = 0xFF0000;
+                    outcome = 'fumble_malfunction';
                 } else {
                     result += `＞ **故障** `;
-                    color = 0xFFA500; // オレンジ色
+                    outcome = 'malfunction';
                 }
             } else {
                 result += `＞ **正常** `;
-                color = 0x888888;
             }
         } else if (roll.getTarget()) {
             // 通常のCC/CCB判定
             if (roll.isSuccess()) {
-                color = 0x0000FF;
                 result += `**<= ${roll.getTarget()}** ＞ **成功** `;
-                
+                outcome = 'success';
+
                 if (roll.isSpecial()) {
                     result += `**/ スペシャル** `;
                 }
@@ -95,20 +94,21 @@ export class RollDiceUseCase {
                     result += `**/ 決定的成功** `;
                 }
             } else {
-                color = 0xFF0000;
                 result += `**<=${roll.getTarget()}** ＞ **失敗** `;
-                
+                outcome = 'failure';
+
                 if (roll.isCriticalFailure()) {
                     result += `**/ 致命的失敗** `;
+                    outcome = 'critical_failure';
                 }
             }
         }
-        
+
         return {
             expression: roll.getExpression(),
             result,
             total: roll.getTotal(),
-            color
+            outcome
         };
     }
 
@@ -117,7 +117,7 @@ export class RollDiceUseCase {
             expression: roll.getExpression(),
             result: `＞ **${roll.getSelectedChoice()}**`,
             total: roll.getTotal(),
-            color: 0x888888
+            outcome: 'normal'
         };
     }
 
@@ -126,18 +126,18 @@ export class RollDiceUseCase {
             expression: roll.getExpression(),
             result: ` ＞ ${roll.getDetailedExpression()} ＞ **${roll.getTotal()}**`,
             total: roll.getTotal(),
-            color: 0x888888
+            outcome: 'normal'
         };
     }
 
     private mapCoCToDto(roll: CoCDiceRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
-        let color = 0x888888;
-        
+        let outcome: DiceOutcome = 'normal';
+
         const target = roll.getTarget();
         const successLevel = roll.getSuccessLevel();
         const difficulty = roll.getDifficulty();
-        
+
         if (target && successLevel) {
             // 難易度指定がある場合
             if (difficulty) {
@@ -147,20 +147,22 @@ export class RollDiceUseCase {
                     'e': 'イクストリーム',
                     'c': 'クリティカル'
                 }[difficulty];
-                
+
                 if (roll.isSuccess()) {
-                    color = 0x0000FF;
                     result += `**<= ${target}(${difficultyName})** ＞ **成功** `;
+                    outcome = 'success';
                 } else {
-                    color = 0xFF0000;
                     result += `**<= ${target}(${difficultyName})** ＞ **失敗** `;
+                    outcome = 'failure';
                 }
-                
+
                 // クリティカル/ファンブル表示
                 if (successLevel === 'critical') {
                     result += `**/ クリティカル** `;
+                    outcome = 'critical';
                 } else if (successLevel === 'fumble') {
                     result += `**/ ファンブル** `;
+                    outcome = 'fumble';
                 }
             } else {
                 // 通常の成功レベル判定
@@ -172,41 +174,43 @@ export class RollDiceUseCase {
                     'failure': '失敗',
                     'fumble': 'ファンブル'
                 };
-                
-                const levelColors = {
-                    'critical': 0x00FFFF,
-                    'extreme': 0x00FF00,
-                    'hard': 0x0080FF,
-                    'regular': 0x0000FF,
-                    'failure': 0xFF0000,
-                    'fumble': 0xFF00FF
+
+                const successLevelToOutcome: Record<string, DiceOutcome> = {
+                    'critical': 'critical',
+                    'extreme': 'extreme_success',
+                    'hard': 'hard_success',
+                    'regular': 'regular_success',
+                    'failure': 'failure',
+                    'fumble': 'fumble'
                 };
-                
-                color = levelColors[successLevel];
+
                 result += `**<= ${target}** ＞ **${levelNames[successLevel]}** `;
+                outcome = successLevelToOutcome[successLevel] ?? 'normal';
             }
         }
-        
+
         return {
             expression: roll.getExpression(),
             result,
             total: roll.getTotal(),
-            color
+            outcome
         };
     }
 
     private mapFARToDto(roll: FARRoll): DiceRollDto {
         let result = `＞ **命中: ${roll.getHits()}** / **貫通: ${roll.getImpales()}** / **残弾: ${roll.getRemainingBullets()}** `;
-        
+        let outcome: DiceOutcome = 'normal';
+
         if (roll.isMalfunctioned()) {
             result += `**/ 故障** `;
+            outcome = 'malfunction';
         }
-        
+
         return {
             expression: roll.getExpression(),
             result,
             total: roll.getHits(),
-            color: roll.isMalfunctioned() ? 0xFF0000 : 0x888888
+            outcome
         };
     }
 }

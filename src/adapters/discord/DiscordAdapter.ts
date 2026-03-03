@@ -1,7 +1,7 @@
 import { Client, Message } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { InteractionHandler } from '../../interfaces/InteractionHandler';
-import { diceRoll } from '../../infrastructure/commands/legacy/classicDiceRoll';
+import { Command } from '../../shared/interfaces/Command';
+import { InteractionHandler } from '../../shared/interfaces/InteractionHandler';
+import { diceRoll } from '../../infrastructure/services/dice/classicDiceRoll';
 import { createErrorMessage } from '../../presentation/discord/builders/messages';
 import { WebSocketServer } from '../../infrastructure/websocket/WebSocketServer';
 import { MessageProcessor } from '../../infrastructure/services/MessageProcessor';
@@ -14,9 +14,14 @@ export class DiscordAdapter {
     private commands: Map<string, Command> = new Map();
     private adminCommands: Map<string, (message: Message, guildId: string) => Promise<void>> = new Map();
     private interactionHandlers: Map<string, InteractionHandler> = new Map();
+    private initPromise: Promise<void>;
 
     constructor(private client: Client, private wsServer?: WebSocketServer) {
-        this.init();
+        this.initPromise = this.init();
+    }
+
+    public waitForInit(): Promise<void> {
+        return this.initPromise;
     }
 
     private async init() {
@@ -77,7 +82,7 @@ export class DiscordAdapter {
     }
 
     private async loadAdminCommands() {
-        const adminCommandsPath = path.join(process.cwd(), 'dist/adminCommands');
+        const adminCommandsPath = path.join(process.cwd(), 'dist/infrastructure/commands/admin');
         const commandFiles = fs.readdirSync(adminCommandsPath).filter(file => file.endsWith('.js'));
 
         for (const file of commandFiles) {

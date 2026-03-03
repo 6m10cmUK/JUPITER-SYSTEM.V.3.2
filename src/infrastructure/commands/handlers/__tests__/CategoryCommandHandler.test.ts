@@ -1,11 +1,19 @@
 import { CategoryCommandHandler, CategoryError } from '../CategoryCommandHandler';
+import { CategoryManagementService } from '../../../../domain/services/CategoryManagementService';
+import { Guild } from 'discord.js';
 
 // 簡潔なテストに修正
 describe('CategoryCommandHandler', () => {
     let handler: CategoryCommandHandler;
 
     beforeEach(() => {
-        handler = new CategoryCommandHandler();
+        const mockFactory = (_guild: Guild) => ({
+            createCategoryWithRoles: jest.fn(),
+            assignHandout: jest.fn(),
+            createParty: jest.fn(),
+            deleteCategory: jest.fn(),
+        } as unknown as CategoryManagementService);
+        handler = new CategoryCommandHandler(mockFactory);
     });
 
     test('ハンドラーが正常にインスタンス化される', () => {
@@ -53,6 +61,18 @@ describe('CategoryCommandHandler', () => {
 
             // 例外が発生してもテストが失敗しないことを確認
             await expect(handler.handle(mockInteraction, 'create')).resolves.not.toThrow();
+            // editReplyがエラーメッセージ付きで呼ばれたことを検証（エラーハンドリングパス）
+            expect(mockInteraction.editReply).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    embeds: expect.arrayContaining([
+                        expect.objectContaining({
+                            data: expect.objectContaining({
+                                title: expect.stringContaining('ERROR')
+                            })
+                        })
+                    ])
+                })
+            );
         });
     });
 });

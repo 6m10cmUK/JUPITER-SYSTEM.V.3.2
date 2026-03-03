@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction } from 'discord.js';
-import { Command } from '../../interfaces/Command';
+import { Command } from '../../shared/interfaces/Command';
 import { generateEmbed } from '../../presentation/discord/builders/embedGenerator';
 import { WebSocketServer } from '../websocket/WebSocketServer';
 import * as packageJson from '../../../package.json';

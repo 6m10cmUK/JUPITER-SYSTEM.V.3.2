@@ -1,11 +1,10 @@
 import { ButtonInteraction } from 'discord.js';
-import { SecondaryStats } from '../application/dto/StatusDto';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
-import { StatusServiceFactory } from '../domain/services/status/StatusServiceFactory';
+import { SwapStatsUseCase } from '../application/use-cases/status/SwapStatsUseCase';
 
 export const prefix = 'changeConfirm';
 
@@ -14,11 +13,7 @@ export async function execute(interaction: ButtonInteraction) {
     const [_, beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    const user = await interaction.client.users.fetch(userId);
-    if (user.id !== interaction.user.id) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -57,25 +52,10 @@ export async function execute(interaction: ButtonInteraction) {
     const beforeStatUpper = beforeStat.toUpperCase();
     const afterStatUpper = afterStat.toUpperCase();
 
-    // 値を入れ替え
-    const tempValue = statusData.primaryStats[beforeStatUpper];
-    const tempDetails = statusData.primaryStatsDetails[beforeStatUpper];
-    
-    statusData.primaryStats[beforeStatUpper] = statusData.primaryStats[afterStatUpper];
-    statusData.primaryStatsDetails[beforeStatUpper] = statusData.primaryStatsDetails[afterStatUpper];
-    
-    statusData.primaryStats[afterStatUpper] = tempValue;
-    statusData.primaryStatsDetails[afterStatUpper] = tempDetails;
-
-    // 履歴を更新
-    if (statusData.history && statusData.history.length > 0) {
-        statusData.history += "\n";
-    }
-    statusData.history += `${beforeStatUpper}: ${statusData.primaryStats[beforeStatUpper]} ⇄ ${afterStatUpper}: ${statusData.primaryStats[afterStatUpper]}`;
-
-    // 二次ステータスを再計算
-    const statusService = StatusServiceFactory.create(statusData.version);
-    statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats);
+    // SwapStatsUseCaseで入れ替え処理を実行
+    const swapUseCase = new SwapStatsUseCase();
+    const updatedData = swapUseCase.execute(statusData, beforeStatUpper, afterStatUpper);
+    Object.assign(statusData, updatedData);
 
     // ステータス表示を更新
     const formatter = new StatusEmbedFormatter();

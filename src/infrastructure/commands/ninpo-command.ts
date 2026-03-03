@@ -5,9 +5,9 @@ import {
     SlashCommandSubcommandBuilder, 
     SlashCommandIntegerOption 
 } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { NinpoEmbedFormatter } from '../../presentation/formatters/NinpoEmbedFormatter';
+import { Command } from '../../shared/interfaces/Command';
 import { NinpoSearchCriteria } from '../../application/dto/NinpoDto';
+import { createNinpoCommandHandler } from '../factories/CommandHandlerFactory';
 import fs from 'fs';
 import path from 'path';
 
@@ -115,27 +115,7 @@ export const command: Command = {
         ) as SlashCommandBuilder,
 
     async execute(interaction: ChatInputCommandInteraction) {
-        const subcommand = interaction.options.getSubcommand() as NinpoSearchCriteria['searchType'];
-        await interaction.deferReply();
-
-        const query = interaction.options.getString('query') ?? '';
-        const formatter = new NinpoEmbedFormatter();
-
-        // nameとeffectサブコマンドの場合はカテゴリを指定しない（全検索）
-        let category: NinpoSearchCriteria['category'] | 'all';
-        if (subcommand === 'name' || subcommand === 'effect') {
-            category = 'all' as any;
-        } else {
-            category = interaction.options.getString('category', true) as NinpoSearchCriteria['category'];
-        }
-
-        const criteria: NinpoSearchCriteria = {
-            query,
-            searchType: subcommand,
-            category: category as NinpoSearchCriteria['category'],
-            page: 1
-        };
-        const display = await formatter.format(interaction, criteria);
-        await interaction.editReply(display);
+        const handler = createNinpoCommandHandler();
+        await handler.handle(interaction);
     }
 };

@@ -3,13 +3,7 @@ import { HolidayService } from '../../../domain/services/holidayService';
 import { DensukeEmbedFormatter } from '../../../presentation/formatters/densukeEmbedFormatter';
 
 export class DensukeCommandHandler {
-  private holidayService: HolidayService;
-  private formatter: DensukeEmbedFormatter;
-
-  constructor() {
-    this.holidayService = new HolidayService();
-    this.formatter = new DensukeEmbedFormatter();
-  }
+  constructor(private holidayService: HolidayService, private formatter: DensukeEmbedFormatter) {}
 
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     await interaction.deferReply();

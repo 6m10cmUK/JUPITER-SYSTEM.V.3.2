@@ -19,7 +19,7 @@ export class WebSocketServer extends EventEmitter {
   private wss: WSServer;
   private clients: Map<string, any> = new Map();
   
-  constructor(server: Server, port: number = 8080) {
+  constructor(server: Server) {
     super();
     this.wss = new WSServer({ server });
     this.setupWebSocket();

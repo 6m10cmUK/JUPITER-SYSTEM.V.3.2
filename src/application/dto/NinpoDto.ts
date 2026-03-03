@@ -27,6 +27,7 @@ export interface NinpoSearchCriteria {
     searchType: NinpoSearchType;
     category: NinpoCategory;
     page: number;
+    limit?: number; // ランダム表示件数
     ninpoCategory?: string; // 忍法カテゴリー（汎用忍法、流派忍法等）
 }
 

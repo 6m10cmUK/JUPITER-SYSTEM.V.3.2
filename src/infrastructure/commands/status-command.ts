@@ -1,25 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandStringOption } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { StatusCommandHandler } from './handlers/StatusCommandHandler';
-import { StatusType, CoCVersion } from '../../application/dto/StatusDto';
-
-/**
- * StatusTypeをCoCVersionに変換する型安全なヘルパー
- * @param type StatusType
- * @returns CoCVersion
- */
-function convertStatusTypeToCoCVersion(type: StatusType): CoCVersion {
-    switch (type) {
-        case 'ver6':
-            return '6';
-        case 'ver7':
-            return '7';
-        default:
-            // TypeScriptの exhaustiveness check
-            const _exhaustiveCheck: never = type;
-            throw new Error(`Unknown status type: ${_exhaustiveCheck}`);
-    }
-}
+import { Command } from '../../shared/interfaces/Command';
+import { createStatusCommandHandler } from '../factories/CommandHandlerFactory';
 
 /**
  * CoC（Call of Cthulhu）TRPG用のキャラクターステータス生成コマンド
@@ -51,7 +32,7 @@ export const command: Command = {
         
     async execute(interaction: ChatInputCommandInteraction) {
         // StatusCommandHandlerに処理を委譲（統一パターン）
-        const handler = new StatusCommandHandler();
+        const handler = createStatusCommandHandler();
         await handler.handle(interaction);
     }
 }; 

@@ -6,7 +6,7 @@ import {
     ActionRowBuilder,
     ModalSubmitInteraction
 } from 'discord.js';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
@@ -16,6 +16,9 @@ export const prefix = 'changeName';
 
 export async function execute(interaction: ButtonInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
+
+    // 権限チェック
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE NAME FAILED')) return;
 
     const modal = new ModalBuilder()
         .setCustomId(`nameChangeModal:${messageId}:${userId}`)
@@ -39,6 +42,9 @@ export async function handleNameChangeModal(interaction: ModalSubmitInteraction)
 
     const [_, messageId, userId] = interaction.customId.split(':');
     const newName = interaction.fields.getTextInputValue('name');
+
+    // 権限チェック
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE NAME FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 

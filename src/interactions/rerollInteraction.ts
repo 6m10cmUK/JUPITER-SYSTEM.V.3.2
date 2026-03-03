@@ -1,11 +1,11 @@
 import { StringSelectMenuInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
 import { escapeDiscordMarkdown } from '../shared/utils/discordUtils';
-import { processReroll } from '../shared/utils/rerollProcessor';
+import { RerollStatusUseCase } from '../application/use-cases/status/RerollStatusUseCase';
 
 export const prefix = 'reroll';
 
@@ -13,11 +13,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    const user = await interaction.client.users.fetch(userId);
-    if (user.id !== interaction.user.id) {
-        await interaction.reply(createErrorMessage(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'REROLL FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -56,7 +52,8 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     const selectedStat = interaction.values[0].toUpperCase(); // 大文字に変換
     
     // 振り直し処理を実行
-    const rerollResult = processReroll(selectedStat, statusData, messageId);
+    const rerollUseCase = new RerollStatusUseCase();
+    const rerollResult = rerollUseCase.reroll(selectedStat, statusData, messageId);
 
     // 現在のステータス値を取得
     const currentValue = statusData.primaryStats[selectedStat];

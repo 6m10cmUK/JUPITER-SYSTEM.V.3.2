@@ -1,4 +1,4 @@
-import { Command } from '../../interfaces/Command';
+import { Command } from '../../shared/interfaces/Command';
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { WordleCommandHandler } from './handlers/WordleCommandHandler';
 

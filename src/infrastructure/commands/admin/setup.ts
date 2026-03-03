@@ -1,5 +1,5 @@
 import { Message, REST, Routes } from 'discord.js';
-import { createErrorMessage, createSuccessMessage, createInfoMessage } from '../presentation/discord/builders/messages';
+import { createErrorMessage, createSuccessMessage, createInfoMessage } from '../../../presentation/discord/builders/messages';
 
 import * as dotenv from 'dotenv';
 dotenv.config();

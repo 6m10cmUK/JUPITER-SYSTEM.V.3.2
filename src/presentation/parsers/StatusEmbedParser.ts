@@ -1,8 +1,33 @@
 import { Embed } from 'discord.js';
-import { StatusResultDto, SecondaryStats } from '../../application/dto/StatusDto';
+import { SecondaryStats } from '../../application/dto/StatusDto';
+import { StatusViewModel } from '../viewmodels/StatusViewModel';
+
+// StatusEmbedFormatterが生成するフィールド名/値のパターンに対応
+// フィールド名例: "1️⃣ STR: 15", "Total: 120", "LUC: 75\nKNW: 60\nIDA: 55"
+// フィールド値例: "**振り直し回数: 3**", "**DB: +1d4 BUILD: 1**"
+const EMBED_PATTERNS = {
+    /** プライマリステータスのフィールド名: "1️⃣ STR: 15" → stat名と値 */
+    primaryStat: /^\d️⃣\s*([A-Z]+):\s*(\d+)$/,
+    /** 振り直し回数: "**振り直し回数: 3**" */
+    rerollCount: /\*\*振り直し回数\s*:\s*(\d+)\*\*/,
+    /** DB: "DB: +1d4" or "DB: ±0" */
+    db: /DB:\s*([+-]?\d+[dD]\d+|±0|[+-]?\d+)/,
+    /** BUILD (Ver7): "BUILD: 1" */
+    build: /BUILD:\s*([+-]?\d+)/,
+    /** 二次ステータス各種 */
+    luc: /LUC:\s*(\d+)/,
+    knw: /KNW:\s*(\d+)/,
+    ida: /IDA:\s*(\d+)/,
+    mov: /MOV:\s*(\d+)/,
+    hp: /HP:\s*(\d+)/,
+    mp: /MP:\s*(\d+)/,
+    san: /SAN:\s*(\d+)/,
+    jobPoints: /基礎職業P:\s*(\d+)/,
+    interestPoints: /興味P:\s*(\d+)/,
+} as const;
 
 export class StatusEmbedParser {
-    parse(embed: Embed): StatusResultDto | null {
+    parse(embed: Embed): StatusViewModel | null {
         if (!embed.data?.fields || embed.data.fields.length === 0) {
             return null;
         }
@@ -21,18 +46,14 @@ export class StatusEmbedParser {
             ? ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU']
             : ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC'];
         
-        // 各ステータスフィールドから値を抽出
-        statOrder.forEach((stat, index) => {
-            const field = embed.data!.fields![index];
-            if (field) {
-                // フィールド名から数値を抽出 (例: "1️⃣ STR: 15" -> 15)
-                const match = field.name.match(/:\s*(\d+)$/);
-                if (match) {
-                    primaryStats[stat] = parseInt(match[1], 10);
-                    primaryStatsDetails[stat] = field.value || '(詳細なし)';
-                }
+        // フィールド名でステータスを検索して値を抽出（インデックスに依存しない）
+        for (const field of embed.data!.fields!) {
+            const match = field.name.match(EMBED_PATTERNS.primaryStat);
+            if (match && statOrder.includes(match[1])) {
+                primaryStats[match[1]] = parseInt(match[2], 10);
+                primaryStatsDetails[match[1]] = field.value || '(詳細なし)';
             }
-        });
+        }
         
         // 二次ステータスの抽出
         const secondaryStats: Partial<SecondaryStats> = {};
@@ -40,7 +61,7 @@ export class StatusEmbedParser {
         // 振り直し回数の抽出
         let rerollCount = 0;
         embed.data.fields.forEach(field => {
-            const match = field.value.match(/\*\*振り直し回数\s*:\s*(\d+)\*\*/);
+            const match = field.value.match(EMBED_PATTERNS.rerollCount);
             if (match) {
                 rerollCount = parseInt(match[1], 10);
             }
@@ -77,51 +98,37 @@ export class StatusEmbedParser {
         const totalField = embed.data!.fields!.find(field => field.name.startsWith('Total:'));
         if (totalField) {
             // DBの抽出（ダイス記法を優先）
-            const dbMatch = totalField.value.match(/DB:\s*([+-]?\d+[dD]\d+|±0|[+-]?\d+)/);
+            const dbMatch = totalField.value.match(EMBED_PATTERNS.db);
             if (dbMatch) {
                 secondaryStats.DB = dbMatch[1];
             }
-            
+
             // BUILDの抽出（Ver7のみ）
             if (version === '7') {
-                const buildMatch = totalField.value.match(/BUILD:\s*([+-]?\d+)/);
+                const buildMatch = totalField.value.match(EMBED_PATTERNS.build);
                 if (buildMatch) {
                     secondaryStats.BUILD = parseInt(buildMatch[1], 10);
                 }
             }
         }
         
-        // その他の二次ステータスをフィールドから抽出
+        // その他の二次ステータスをフィールド名から抽出
         embed.data!.fields!.forEach(field => {
-            // LUC, KNW, IDA等の抽出
-            const lucMatch = field.name.match(/LUC:\s*(\d+)/);
-            if (lucMatch) secondaryStats.LUC = parseInt(lucMatch[1], 10);
-            
-            const knwMatch = field.name.match(/KNW:\s*(\d+)/);
-            if (knwMatch) secondaryStats.KNW = parseInt(knwMatch[1], 10);
-            
-            const idaMatch = field.name.match(/IDA:\s*(\d+)/);
-            if (idaMatch) secondaryStats.IDA = parseInt(idaMatch[1], 10);
-            
-            const movMatch = field.name.match(/MOV:\s*(\d+)/);
-            if (movMatch) secondaryStats.MOV = parseInt(movMatch[1], 10);
-            
-            // HP, MP, SANの抽出
-            const hpMatch = field.name.match(/HP:\s*(\d+)/);
-            if (hpMatch) secondaryStats.HP = parseInt(hpMatch[1], 10);
-            
-            const mpMatch = field.name.match(/MP:\s*(\d+)/);
-            if (mpMatch) secondaryStats.MP = parseInt(mpMatch[1], 10);
-            
-            const sanMatch = field.name.match(/SAN:\s*(\d+)/);
-            if (sanMatch) secondaryStats.SAN = parseInt(sanMatch[1], 10);
-            
-            // 職業ポイントと興味ポイントの抽出
-            const jobMatch = field.name.match(/基礎職業P:\s*(\d+)/);
-            if (jobMatch) secondaryStats.JobPoints = parseInt(jobMatch[1], 10);
-            
-            const interestMatch = field.name.match(/興味P:\s*(\d+)/);
-            if (interestMatch) secondaryStats.InterestPoints = parseInt(interestMatch[1], 10);
+            const name = field.name;
+            const tryExtract = (pattern: RegExp): number | null => {
+                const m = name.match(pattern);
+                return m ? parseInt(m[1], 10) : null;
+            };
+
+            secondaryStats.LUC ??= tryExtract(EMBED_PATTERNS.luc) ?? undefined;
+            secondaryStats.KNW ??= tryExtract(EMBED_PATTERNS.knw) ?? undefined;
+            secondaryStats.IDA ??= tryExtract(EMBED_PATTERNS.ida) ?? undefined;
+            secondaryStats.MOV ??= tryExtract(EMBED_PATTERNS.mov) ?? undefined;
+            secondaryStats.HP ??= tryExtract(EMBED_PATTERNS.hp) ?? undefined;
+            secondaryStats.MP ??= tryExtract(EMBED_PATTERNS.mp) ?? undefined;
+            secondaryStats.SAN ??= tryExtract(EMBED_PATTERNS.san) ?? undefined;
+            secondaryStats.JobPoints ??= tryExtract(EMBED_PATTERNS.jobPoints) ?? undefined;
+            secondaryStats.InterestPoints ??= tryExtract(EMBED_PATTERNS.interestPoints) ?? undefined;
         });
         
         // 計算で求められる値を埋める（抽出できなかった場合）

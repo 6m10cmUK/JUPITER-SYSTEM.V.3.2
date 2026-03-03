@@ -27,7 +27,7 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
   // モーダルを作成
   const modal = new ModalBuilder()
     .setCustomId(`wordle:guess:${gameKey}`)
-    .setTitle(`🎯 日本語Wordle (${game.guesses.length + 1}回目)`);
+    .setTitle(`🎯 日本語Wordle (${game.getGuessCount() + 1}回目)`);
 
   const historyDisplay = game.getGuessHistory();
   

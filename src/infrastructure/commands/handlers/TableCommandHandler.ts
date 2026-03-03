@@ -1,4 +1,4 @@
-import { 
+import {
     ChatInputCommandInteraction,
     PermissionFlagsBits,
     EmbedBuilder,
@@ -11,14 +11,15 @@ import {
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../../../presentation/discord/builders/messages';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
-import { 
-    CategoryManagementService, 
-    CategoryManagementError 
+import {
+    CategoryManagementService,
+    CategoryManagementError
 } from '../../../domain/services/CategoryManagementService';
-import { 
-    ChannelLogService, 
-    ChannelLogError 
+import {
+    ChannelLogService,
+    ChannelLogError
 } from '../../../domain/services/ChannelLogService';
+import { GuildServiceFactory } from '../../factories/CommandHandlerFactory';
 
 /**
  * テーブル管理コマンドのオプション型定義
@@ -52,6 +53,11 @@ export class TableError extends Error {
  * 旧カテゴリ管理4コマンドを統合したサブコマンド処理
  */
 export class TableCommandHandler {
+    constructor(
+        private readonly categoryServiceFactory: GuildServiceFactory<CategoryManagementService>,
+        private readonly channelLogServiceFactory: GuildServiceFactory<ChannelLogService>
+    ) {}
+
     /**
      * テーブル管理処理を実行
      * @param interaction Discord インタラクション
@@ -121,7 +127,7 @@ export class TableCommandHandler {
         }
 
         try {
-            const categoryService = new CategoryManagementService(interaction.guild);
+            const categoryService = this.categoryServiceFactory(interaction.guild);
             const result = await categoryService.createCategoryWithRoles(name, handout, voice);
 
             await interaction.editReply(
@@ -176,7 +182,7 @@ export class TableCommandHandler {
             const member = interaction.guild.members.cache.get(user.id);
             const finalDisplayName = displayName || (member ? member.displayName : user.username);
 
-            const categoryService = new CategoryManagementService(interaction.guild);
+            const categoryService = this.categoryServiceFactory(interaction.guild);
             const result = await categoryService.assignHandout(user, number, categoryId, finalDisplayName);
 
             const successMessage = [
@@ -245,7 +251,7 @@ export class TableCommandHandler {
         }
 
         try {
-            const categoryService = new CategoryManagementService(interaction.guild);
+            const categoryService = this.categoryServiceFactory(interaction.guild);
             const result = await categoryService.createParty(partyNumber, categoryId);
 
             const successMessage = [
@@ -396,7 +402,7 @@ export class TableCommandHandler {
 
         try {
             // ログ収集・保存実行（進捗メッセージなし）
-            const logService = new ChannelLogService(interaction.guild);
+            const logService = this.channelLogServiceFactory(interaction.guild);
             const result = await logService.collectAndSaveCategoryLogs(categoryId);
 
             // シンプルな完了メッセージ

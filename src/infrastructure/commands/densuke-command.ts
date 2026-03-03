@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { DensukeCommandHandler } from './handlers/densukeCommandHandler';
+import { Command } from '../../shared/interfaces/Command';
+import { createDensukeCommandHandler } from '../factories/CommandHandlerFactory';
 
 export const command: Command = {
   data: new SlashCommandBuilder()
@@ -32,7 +32,7 @@ export const command: Command = {
         )
     ) as SlashCommandBuilder,
   execute: async (interaction: ChatInputCommandInteraction) => {
-    const handler = new DensukeCommandHandler();
+    const handler = createDensukeCommandHandler();
     await handler.execute(interaction);
   }
 };

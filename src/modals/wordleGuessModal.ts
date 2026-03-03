@@ -38,14 +38,14 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
     const result = wordleService.checkGuess(guess, game.answer);
     game.addGuess(result);
 
-    if (game.completed) {
+    if (game.isCompleted) {
       // ゲーム終了
       activeGames.delete(gameKey);
       
       const embed = {
-        title: game.won ? '🎉 正解！' : '😢 残念...',
+        title: game.isWon ? '🎉 正解！' : '😢 残念...',
         description: game.getGuessHistory(),
-        color: game.won ? 0x00FF00 : 0xFF0000,
+        color: game.isWon ? 0x00FF00 : 0xFF0000,
         fields: [
           {
             name: '答え',
@@ -54,7 +54,7 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
           },
           {
             name: '試行回数',
-            value: `${game.guesses.length}回`,
+            value: `${game.getGuessCount()}回`,
             inline: true
           }
         ],
@@ -85,7 +85,7 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
 
       await interaction.reply({ 
         embeds: [{
-          title: `🎯 日本語Wordle (${game.guesses.length}回目)`,
+          title: `🎯 日本語Wordle (${game.getGuessCount()}回目)`,
           description: historyDisplay,
           color: 0x333333,
           footer: {

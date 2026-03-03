@@ -67,7 +67,7 @@ describe('CategoryCommandHandler', () => {
                     embeds: expect.arrayContaining([
                         expect.objectContaining({
                             data: expect.objectContaining({
-                                description: expect.stringContaining('エラー')
+                                title: expect.stringContaining('ERROR')
                             })
                         })
                     ])

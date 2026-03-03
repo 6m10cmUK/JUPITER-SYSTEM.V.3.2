@@ -6,6 +6,10 @@ import { StatusResultDto } from '../../dto/StatusDto';
 import { StatusServiceFactory } from '../../../domain/services/status/StatusServiceFactory';
 
 export class SwapStatsUseCase {
+    constructor(
+        private readonly statusServiceFactory: typeof StatusServiceFactory = StatusServiceFactory
+    ) {}
+
     /**
      * 2つのステータスの値を入れ替える
      * @param statusData ステータスデータ
@@ -14,11 +18,16 @@ export class SwapStatsUseCase {
      * @returns 更新済みStatusResultDto
      */
     execute(statusData: StatusResultDto, beforeStat: string, afterStat: string): StatusResultDto {
+        // 同じステータス同士の入れ替えは何もしない
+        if (beforeStat === afterStat) {
+            return statusData;
+        }
+
         // 指定されたステータスがprimaryStatsに存在するかチェック
-        if (!(beforeStat in statusData.primaryStats) || !(afterStat in statusData.primaryStats)) {
+        if (!Object.prototype.hasOwnProperty.call(statusData.primaryStats, beforeStat) || !Object.prototype.hasOwnProperty.call(statusData.primaryStats, afterStat)) {
             throw new Error(`無効なステータス名: ${beforeStat}, ${afterStat}`);
         }
-        if (!(beforeStat in statusData.primaryStatsDetails) || !(afterStat in statusData.primaryStatsDetails)) {
+        if (!Object.prototype.hasOwnProperty.call(statusData.primaryStatsDetails, beforeStat) || !Object.prototype.hasOwnProperty.call(statusData.primaryStatsDetails, afterStat)) {
             throw new Error(`ステータス詳細が見つかりません: ${beforeStat}, ${afterStat}`);
         }
 
@@ -37,7 +46,7 @@ export class SwapStatsUseCase {
         };
 
         // 二次ステータス再計算
-        const statusService = StatusServiceFactory.create(statusData.version);
+        const statusService = this.statusServiceFactory.create(statusData.version);
         const updatedSecondaryStats = statusService.calculateSecondaryStats(updatedPrimaryStats);
 
         // 履歴追記

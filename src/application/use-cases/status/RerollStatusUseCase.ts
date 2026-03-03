@@ -41,7 +41,7 @@ export class RerollStatusUseCase {
 
             // 値が-1の場合は範囲外なので通常の振り直しを実行
             if (optimalValue !== -1 && StatValueCalculator.isValueInValidRange(selectedStat, statusData.version, optimalValue)) {
-                const details = StatValueCalculator.generateOptimalDetails(selectedStat, optimalValue);
+                const details = StatValueCalculator.generateOptimalDetails(selectedStat, optimalValue, statusData.version);
 
                 // 検証状態をクリア
                 ValidationStateService.clearValidation(messageId);

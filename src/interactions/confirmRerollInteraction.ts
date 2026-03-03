@@ -52,7 +52,7 @@ export async function execute(interaction: ButtonInteraction) {
 
     // 現在の詳細からダイス式を抽出
     const currentDetails = statusData.primaryStatsDetails[statType];
-    const rawDiceExpression = DiceExpressionParser.extractDiceExpression(currentDetails);
+    const rawDiceExpression = currentDetails ? DiceExpressionParser.extractDiceExpression(currentDetails) : null;
     const customDiceExpression = rawDiceExpression ? unescapeDiscordMarkdown(rawDiceExpression) : null;
 
     // エスケープ処理

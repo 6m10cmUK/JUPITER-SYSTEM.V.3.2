@@ -36,7 +36,7 @@ async function main() {
 
     // HTTPサーバーとWebSocketサーバーの初期化
     const server = createServer();
-    const wsServer = new WebSocketServer(server, PORT);
+    const wsServer = new WebSocketServer(server);
 
     // NotificationSchedulerの初期化（起動時にスケジュールを復元）
     const scheduler = new NotificationScheduler(wsServer);

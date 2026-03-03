@@ -14,7 +14,7 @@ export class WordleGame {
     completed: boolean = false,
     won: boolean = false
   ) {
-    this.guesses = initialGuesses.map(guess => [...guess]);
+    this.guesses = initialGuesses.map(guess => guess.map(item => ({ ...item })));
     this._completed = completed;
     this._won = completed ? won : false;
   }
@@ -35,8 +35,8 @@ export class WordleGame {
   addGuess(guess: GuessResult[]): void {
     this.guesses.push(guess);
 
-    // 正解チェック
-    if (guess.every(r => r.status === 'correct')) {
+    // 正解チェック（空配列の場合はevery()がtrueを返すため除外）
+    if (guess.length > 0 && guess.every(r => r.status === 'correct')) {
       this._completed = true;
       this._won = true;
     }

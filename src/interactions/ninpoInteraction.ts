@@ -1,6 +1,6 @@
 import { ButtonInteraction } from 'discord.js';
 import { NinpoEmbedFormatter } from '../presentation/formatters/NinpoEmbedFormatter';
-import { NinpoComponentBuilder } from '../presentation/discord/builders/NinpoComponentBuilder';
+import { NinpoComponentBuilder, resolveQueryKey } from '../presentation/discord/builders/NinpoComponentBuilder';
 import { NinpoCommandHandler } from '../infrastructure/commands/handlers/NinpoCommandHandler';
 import { NinpoSearchCriteria } from '../application/dto/NinpoDto';
 
@@ -20,11 +20,11 @@ export async function execute(interaction: ButtonInteraction) {
         }
 
         criteria = {
-            query: decodeURIComponent(query),
+            query: decodeURIComponent(resolveQueryKey(query)),
             searchType: searchType as NinpoSearchCriteria['searchType'],
             category: category as NinpoSearchCriteria['category'],
             page: Number(page),
-            ninpoCategory: ninpoCategory
+            ninpoCategory: resolveQueryKey(ninpoCategory)
         };
     } else if (parts.length === 6) {
         // 古い形式（互換性のため）
@@ -35,7 +35,7 @@ export async function execute(interaction: ButtonInteraction) {
         }
 
         criteria = {
-            query: decodeURIComponent(query),
+            query: decodeURIComponent(resolveQueryKey(query)),
             searchType: searchType as NinpoSearchCriteria['searchType'],
             category: category as NinpoSearchCriteria['category'],
             page: Number(page)
@@ -45,8 +45,9 @@ export async function execute(interaction: ButtonInteraction) {
         return;
     }
 
-    const displayData = NinpoCommandHandler.buildDisplayData(criteria);
     const formatter = new NinpoEmbedFormatter();
+    const handler = new NinpoCommandHandler(formatter);
+    const displayData = handler.buildDisplayData(criteria);
     const embed = formatter.createEmbed(interaction, displayData);
     const components = NinpoComponentBuilder.createComponents(criteria, displayData);
 

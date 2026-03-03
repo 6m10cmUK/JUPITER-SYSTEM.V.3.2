@@ -1,24 +1,58 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { randomUUID } from 'crypto';
 import { NinpoSearchCriteria, NinpoDisplayData } from '../../../application/dto/NinpoDto';
 
-// クエリ文字列の短縮キーマッピング（customId 100文字制限対策）
-const queryKeyMap = new Map<string, string>();
+const MAX_SHORT_KEY_MAP_SIZE = 200;
+const SHORT_KEY_TTL_MS = 30 * 60 * 1000; // 30分
 
-function getShortQueryKey(query: string): string {
-    const encoded = encodeURIComponent(query);
-    if (encoded.length <= 30) return encoded;
-    // 既存のマッピングを検索
-    for (const [key, value] of queryKeyMap.entries()) {
-        if (value === encoded) return key;
+interface ShortKeyEntry {
+    value: string;
+    createdAt: number;
+}
+
+// クエリ・カテゴリ文字列の短縮キーマッピング（customId 100文字制限対策）
+const shortKeyMap = new Map<string, ShortKeyEntry>();
+
+function cleanupShortKeyMap(): void {
+    const now = Date.now();
+    for (const [key, entry] of shortKeyMap.entries()) {
+        if (now - entry.createdAt > SHORT_KEY_TTL_MS) {
+            shortKeyMap.delete(key);
+        }
     }
-    // 新しい短縮キーを生成（タイムスタンプベース）
-    const shortKey = `q_${Date.now().toString(36)}`;
-    queryKeyMap.set(shortKey, encoded);
+    // サイズ制限を超えている場合は古いエントリを削除
+    if (shortKeyMap.size > MAX_SHORT_KEY_MAP_SIZE) {
+        const entries = Array.from(shortKeyMap.entries()).sort((a, b) => a[1].createdAt - b[1].createdAt);
+        const toRemove = entries.slice(0, shortKeyMap.size - MAX_SHORT_KEY_MAP_SIZE);
+        for (const [key] of toRemove) {
+            shortKeyMap.delete(key);
+        }
+    }
+}
+
+function getShortKey(value: string, maxLen: number): string {
+    if (value.length <= maxLen) return value;
+    // 既存のマッピングを検索
+    for (const [key, entry] of shortKeyMap.entries()) {
+        if (entry.value === value) return key;
+    }
+    cleanupShortKeyMap();
+    const shortKey = randomUUID().slice(0, 8);
+    shortKeyMap.set(shortKey, { value, createdAt: Date.now() });
     return shortKey;
 }
 
+function getShortQueryKey(query: string): string {
+    const encoded = encodeURIComponent(query);
+    return getShortKey(encoded, 30);
+}
+
+function getShortCategoryKey(category: string): string {
+    return getShortKey(category, 20);
+}
+
 export function resolveQueryKey(key: string): string {
-    return queryKeyMap.get(key) ?? key;
+    return shortKeyMap.get(key)?.value ?? key;
 }
 
 export class NinpoComponentBuilder {
@@ -26,28 +60,29 @@ export class NinpoComponentBuilder {
         const { query, searchType, category } = criteria;
         const { currentPage, maxPage, categoryPages, currentCategory } = displayData;
         const encodedQuery = getShortQueryKey(query);
+        const shortCurrentCategory = currentCategory ? getShortCategoryKey(currentCategory) : undefined;
         const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
         // ページネーションボタン
         const pageRow = new ActionRowBuilder<ButtonBuilder>();
         pageRow.addComponents(
             new ButtonBuilder()
-                .setCustomId(`ninpo:first:${encodedQuery}:${searchType}:${category}:1:${currentCategory}`)
+                .setCustomId(`ninpo:first:${encodedQuery}:${searchType}:${category}:1:${shortCurrentCategory}`)
                 .setLabel('<<')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(currentPage === 1),
             new ButtonBuilder()
-                .setCustomId(`ninpo:prev:${encodedQuery}:${searchType}:${category}:${currentPage - 1}:${currentCategory}`)
+                .setCustomId(`ninpo:prev:${encodedQuery}:${searchType}:${category}:${currentPage - 1}:${shortCurrentCategory}`)
                 .setLabel('<')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(currentPage === 1),
             new ButtonBuilder()
-                .setCustomId(`ninpo:next:${encodedQuery}:${searchType}:${category}:${currentPage + 1}:${currentCategory}`)
+                .setCustomId(`ninpo:next:${encodedQuery}:${searchType}:${category}:${currentPage + 1}:${shortCurrentCategory}`)
                 .setLabel('>')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(currentPage === maxPage),
             new ButtonBuilder()
-                .setCustomId(`ninpo:last:${encodedQuery}:${searchType}:${category}:${maxPage}:${currentCategory}`)
+                .setCustomId(`ninpo:last:${encodedQuery}:${searchType}:${category}:${maxPage}:${shortCurrentCategory}`)
                 .setLabel('>>')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(currentPage === maxPage)
@@ -64,9 +99,10 @@ export class NinpoComponentBuilder {
                 const categoriesChunk = sortedCategories.slice(i, i + 5);
 
                 categoriesChunk.forEach(cat => {
+                    const shortCat = getShortCategoryKey(cat);
                     categoryRow.addComponents(
                         new ButtonBuilder()
-                            .setCustomId(`ninpo:category:${encodedQuery}:${searchType}:${category}:1:${cat}`)
+                            .setCustomId(`ninpo:category:${encodedQuery}:${searchType}:${category}:1:${shortCat}`)
                             .setLabel(cat)
                             .setStyle(cat === currentCategory ? ButtonStyle.Success : ButtonStyle.Secondary)
                     );

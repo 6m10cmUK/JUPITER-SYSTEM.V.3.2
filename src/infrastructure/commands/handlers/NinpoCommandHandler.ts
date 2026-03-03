@@ -20,7 +20,8 @@ const NINPOS_PER_PAGE = 9;
  */
 export class NinpoCommandHandler {
     constructor(
-        private readonly formatter: NinpoEmbedFormatter
+        private readonly formatter: NinpoEmbedFormatter,
+        private readonly ninpoService: NinpoService = new NinpoService()
     ) {}
 
     /**
@@ -65,10 +66,11 @@ export class NinpoCommandHandler {
             query: '',
             searchType: 'all',
             category,
-            page: count
+            page: 1,
+            limit: count
         };
 
-        const displayData = NinpoCommandHandler.buildDisplayData(criteria);
+        const displayData = this.buildDisplayData(criteria);
         const embed = this.formatter.createEmbed(interaction, displayData);
         const components = NinpoComponentBuilder.createComponents(criteria, displayData);
 
@@ -92,7 +94,7 @@ export class NinpoCommandHandler {
             page: 1
         };
 
-        const displayData = NinpoCommandHandler.buildDisplayData(criteria);
+        const displayData = this.buildDisplayData(criteria);
         const embed = this.formatter.createEmbed(interaction, displayData);
         const components = NinpoComponentBuilder.createComponents(criteria, displayData);
 
@@ -102,10 +104,9 @@ export class NinpoCommandHandler {
     /**
      * NinpoSearchCriteria から NinpoDisplayData を構築する
      */
-    static buildDisplayData(criteria: NinpoSearchCriteria): NinpoDisplayData {
-        const ninpoService = new NinpoService();
-        const allNinpos = ninpoService.searchNinpo(criteria);
-        const title = ninpoService.getTitle(criteria);
+    buildDisplayData(criteria: NinpoSearchCriteria): NinpoDisplayData {
+        const allNinpos = this.ninpoService.searchNinpo(criteria);
+        const title = this.ninpoService.getTitle(criteria);
 
         // 検索の場合はカテゴリ分けしない
         if (criteria.searchType !== 'all') {
@@ -122,7 +123,7 @@ export class NinpoCommandHandler {
         }
 
         // 一覧表示の場合のみカテゴリ分け
-        const categoryInfo = ninpoService.getCategoriesWithPageInfo(allNinpos, NINPOS_PER_PAGE);
+        const categoryInfo = this.ninpoService.getCategoriesWithPageInfo(allNinpos, NINPOS_PER_PAGE);
         const sortedCategories = NinpoComponentBuilder.sortCategories(Array.from(categoryInfo.keys()));
 
         let currentCategory = criteria.ninpoCategory || sortedCategories[0];

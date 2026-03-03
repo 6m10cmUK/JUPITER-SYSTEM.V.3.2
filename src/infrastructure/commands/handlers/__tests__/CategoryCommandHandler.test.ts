@@ -7,7 +7,12 @@ describe('CategoryCommandHandler', () => {
     let handler: CategoryCommandHandler;
 
     beforeEach(() => {
-        const mockFactory = (_guild: Guild) => ({} as CategoryManagementService);
+        const mockFactory = (_guild: Guild) => ({
+            createCategoryWithRoles: jest.fn(),
+            assignHandout: jest.fn(),
+            createParty: jest.fn(),
+            deleteCategory: jest.fn(),
+        } as unknown as CategoryManagementService);
         handler = new CategoryCommandHandler(mockFactory);
     });
 
@@ -56,8 +61,18 @@ describe('CategoryCommandHandler', () => {
 
             // 例外が発生してもテストが失敗しないことを確認
             await expect(handler.handle(mockInteraction, 'create')).resolves.not.toThrow();
-            // editReplyが呼ばれたことを検証（エラーハンドリングパス）
-            expect(mockInteraction.editReply).toHaveBeenCalled();
+            // editReplyがエラーメッセージ付きで呼ばれたことを検証（エラーハンドリングパス）
+            expect(mockInteraction.editReply).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    embeds: expect.arrayContaining([
+                        expect.objectContaining({
+                            data: expect.objectContaining({
+                                description: expect.stringContaining('エラー')
+                            })
+                        })
+                    ])
+                })
+            );
         });
     });
 });

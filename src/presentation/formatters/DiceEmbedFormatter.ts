@@ -5,6 +5,19 @@ import { generateEmbed } from '../discord/builders/embedGenerator';
 export class DiceEmbedFormatter {
     private static readonly DEFAULT_COLOR = 0x888888;
 
+    private static readonly COLOR_MAPPINGS: ReadonlyArray<{ keyword: string; color: number }> = [
+        { keyword: 'ファンブル＆故障', color: 0xFF0000 },
+        { keyword: '致命的失敗', color: 0xFF0000 },
+        { keyword: 'ファンブル', color: 0xFF00FF },
+        { keyword: '故障', color: 0xFFA500 },
+        { keyword: 'クリティカル', color: 0x00FFFF },
+        { keyword: 'イクストリーム成功', color: 0x00FF00 },
+        { keyword: 'ハード成功', color: 0x0080FF },
+        { keyword: 'レギュラー成功', color: 0x0000FF },
+        { keyword: '成功', color: 0x0000FF },
+        { keyword: '失敗', color: 0xFF0000 },
+    ];
+
     formatResponse(
         response: DiceRollResponse,
         source: Message | ChatInputCommandInteraction
@@ -36,30 +49,7 @@ export class DiceEmbedFormatter {
      */
     private static resolveColor(roll: DiceRollDto): number {
         const result = roll.result;
-
-        // ファンブル＆故障 or 致命的失敗
-        if (result.includes('ファンブル＆故障') || result.includes('致命的失敗')) {
-            return 0xFF0000;
-        }
-        if (result.includes('ファンブル')) {
-            return 0xFF00FF;
-        }
-
-        // 故障（オレンジ）
-        if (result.includes('故障')) {
-            return 0xFFA500;
-        }
-
-        // CoC 7版の成功レベル判定
-        if (result.includes('クリティカル')) return 0x00FFFF;
-        if (result.includes('イクストリーム成功')) return 0x00FF00;
-        if (result.includes('ハード成功')) return 0x0080FF;
-        if (result.includes('レギュラー成功')) return 0x0000FF;
-
-        // 一般的な成功/失敗
-        if (result.includes('成功')) return 0x0000FF;
-        if (result.includes('失敗')) return 0xFF0000;
-
-        return DiceEmbedFormatter.DEFAULT_COLOR;
+        const match = DiceEmbedFormatter.COLOR_MAPPINGS.find(m => result.includes(m.keyword));
+        return match?.color ?? DiceEmbedFormatter.DEFAULT_COLOR;
     }
 }

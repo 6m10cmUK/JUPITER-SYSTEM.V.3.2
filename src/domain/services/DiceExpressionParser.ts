@@ -31,7 +31,7 @@ export class DiceExpressionParser {
 
     /**
      * ダイス式文字列から詳細部分を抽出する
-     * 例: "2d6+6 ＞ (4,5)+6 ＞ 15" から "(4,5)+6 ＞ 15" 部分を抽出
+     * 例: "2d6+6 ＞ (4,5)+6 ＞ 15" から "(4,5)+6" 部分を抽出
      * customSetInteraction の正規表現ロジックを移動
      */
     static extractDetailPart(expression: string): string | null {

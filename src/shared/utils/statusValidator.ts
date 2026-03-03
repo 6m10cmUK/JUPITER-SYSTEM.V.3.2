@@ -30,6 +30,6 @@ export function isValueInValidRange(type: string, version: string, value: number
     return StatValueCalculator.isValueInValidRange(type, version, value);
 }
 
-export function generateOptimalDetails(type: string, value: number): string {
-    return StatValueCalculator.generateOptimalDetails(type, value);
+export function generateOptimalDetails(type: string, value: number, version?: string): string {
+    return StatValueCalculator.generateOptimalDetails(type, value, version);
 }

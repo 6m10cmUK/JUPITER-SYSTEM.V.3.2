@@ -51,15 +51,20 @@ export class StatValueCalculator {
     /**
      * 最適化された詳細文字列を生成
      */
-    static generateOptimalDetails(type: string, value: number): string {
+    static generateOptimalDetails(type: string, value: number, version?: string): string {
         // SIZ, INTの場合 (2d6+6)
         if (['SIZ', 'INT'].includes(type) && value >= 8 && value <= 18) {
             return '(' + StatValueCalculator.generateDiceCombo(value - 6, 2, 6, 0) + ')+6';
         }
 
-        // EDU 6版の場合 (3d6+3)
-        if (type === 'EDU' && value >= 6 && value <= 21) {
-            return '(' + StatValueCalculator.generateDiceCombo(value - 3, 3, 6, 0) + ')+3';
+        // EDU: バージョンで分岐（6版: 3d6+3、7版: 3d6）
+        if (type === 'EDU') {
+            if (version === '6' && value >= 6 && value <= 21) {
+                return '(' + StatValueCalculator.generateDiceCombo(value - 3, 3, 6, 0) + ')+3';
+            }
+            if (value >= 3 && value <= 18) {
+                return '(' + StatValueCalculator.generateDiceCombo(value, 3, 6, 0) + ')';
+            }
         }
 
         // その他のステータス (3d6)

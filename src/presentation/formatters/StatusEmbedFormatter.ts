@@ -23,8 +23,8 @@ export class StatusEmbedFormatter {
         
         statOrder.forEach((stat, index) => {
             embed.addFields({
-                name: `${index + 1}️⃣ ${stat}: ${statusData.primaryStats[stat]}`,
-                value: statusData.primaryStatsDetails[stat] || '(詳細なし)',
+                name: `${index + 1}️⃣ ${stat}: ${statusData.primaryStats[stat] ?? 0}`,
+                value: statusData.primaryStatsDetails[stat] ?? '(詳細なし)',
                 inline: true
             });
         });

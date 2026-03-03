@@ -14,9 +14,9 @@ export class WordleGame {
     completed: boolean = false,
     won: boolean = false
   ) {
-    this.guesses = initialGuesses;
+    this.guesses = initialGuesses.map(guess => [...guess]);
     this._completed = completed;
-    this._won = won;
+    this._won = completed ? won : false;
   }
 
   get isCompleted(): boolean {

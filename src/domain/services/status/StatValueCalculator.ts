@@ -2,7 +2,7 @@
  * ステータス値のドメイン計算を行うサービス
  */
 
-import { ValidationStateService } from '../../../application/services/ValidationStateService';
+import { IValidationStateService } from './IValidationStateService';
 
 export class StatValueCalculator {
     /**
@@ -29,18 +29,23 @@ export class StatValueCalculator {
     /**
      * 最適化された値を計算
      */
-    static calculateOptimalValue(type: string, version: string, messageId: string): number {
-        const temporaryValue = ValidationStateService.getTemporaryValue(messageId);
+    static calculateOptimalValue(
+        type: string,
+        version: string,
+        messageId: string,
+        validationService: IValidationStateService
+    ): number {
+        const temporaryValue = validationService.getTemporaryValue(messageId);
         if (temporaryValue !== undefined) {
             if (StatValueCalculator.isValueInValidRange(type, version, temporaryValue)) {
                 return temporaryValue;
             } else {
-                ValidationStateService.clearValidation(messageId);
+                validationService.clearValidation(messageId);
                 return -1;
             }
         }
 
-        return 0;
+        return -1;
     }
 
     /**

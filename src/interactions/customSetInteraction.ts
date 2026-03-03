@@ -136,8 +136,9 @@ export async function handleCustomSetModal(interaction: ModalSubmitInteraction) 
             const escapedResult = escapeDiscordMarkdown(extractedDetail);
             statusData.primaryStatsDetails[statType] = `${escapedDiceExpression}: ${escapedResult}`;
         } else {
-            // フォールバック: ダイス式部分を除去
-            const cleaned = detailedExpression.replace(new RegExp(`^${diceExpression}\\s*＞\\s*`), '');
+            // フォールバック: ダイス式部分を除去（メタ文字をエスケープ）
+            const escapedForRegex = diceExpression.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const cleaned = detailedExpression.replace(new RegExp(`^${escapedForRegex}\\s*＞\\s*`), '');
             const escapedCleaned = escapeDiscordMarkdown(cleaned);
             statusData.primaryStatsDetails[statType] = `${escapedDiceExpression}: ${escapedCleaned}`;
         }

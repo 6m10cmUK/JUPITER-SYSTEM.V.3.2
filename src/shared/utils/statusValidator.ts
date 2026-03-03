@@ -23,7 +23,7 @@ export function clearValidation(key: string): void {
 }
 
 export function calculateOptimalValue(type: string, version: string, messageId: string): number {
-    return StatValueCalculator.calculateOptimalValue(type, version, messageId);
+    return StatValueCalculator.calculateOptimalValue(type, version, messageId, ValidationStateService);
 }
 
 export function isValueInValidRange(type: string, version: string, value: number): boolean {

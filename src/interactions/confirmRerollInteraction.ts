@@ -5,7 +5,7 @@ import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
 import { DiceExpressionParser } from '../domain/services/DiceExpressionParser';
-import { escapeDiscordMarkdown } from '../shared/utils/discordUtils';
+import { escapeDiscordMarkdown, unescapeDiscordMarkdown } from '../shared/utils/discordUtils';
 import { RerollStatusUseCase } from '../application/use-cases/status/RerollStatusUseCase';
 
 export const prefix = 'confirmReroll';
@@ -52,7 +52,8 @@ export async function execute(interaction: ButtonInteraction) {
 
     // 現在の詳細からダイス式を抽出
     const currentDetails = statusData.primaryStatsDetails[statType];
-    const customDiceExpression = DiceExpressionParser.extractDiceExpression(currentDetails);
+    const rawDiceExpression = DiceExpressionParser.extractDiceExpression(currentDetails);
+    const customDiceExpression = rawDiceExpression ? unescapeDiscordMarkdown(rawDiceExpression) : null;
 
     // エスケープ処理
     const escapedDetails = escapeDiscordMarkdown(details);
@@ -70,12 +71,12 @@ export async function execute(interaction: ButtonInteraction) {
         details,
         customDiceExpression
     );
-    Object.assign(statusData, updatedData);
+    const mergedData = { ...statusData, ...updatedData };
 
     // ステータス表示を更新
     const formatter = new StatusEmbedFormatter();
-    const updatedEmbed = await formatter.format(statusData, interaction);
-    const components = StatusComponentBuilder.createComponents(statusData, messageId, userId);
+    const updatedEmbed = await formatter.format(mergedData, interaction);
+    const components = StatusComponentBuilder.createComponents(mergedData, messageId, userId);
 
     await originalMessage.edit({ embeds: [updatedEmbed], components });
 

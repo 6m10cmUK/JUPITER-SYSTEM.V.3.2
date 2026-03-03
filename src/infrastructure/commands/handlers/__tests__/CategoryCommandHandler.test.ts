@@ -56,6 +56,8 @@ describe('CategoryCommandHandler', () => {
 
             // 例外が発生してもテストが失敗しないことを確認
             await expect(handler.handle(mockInteraction, 'create')).resolves.not.toThrow();
+            // editReplyが呼ばれたことを検証（エラーハンドリングパス）
+            expect(mockInteraction.editReply).toHaveBeenCalled();
         });
     });
 });

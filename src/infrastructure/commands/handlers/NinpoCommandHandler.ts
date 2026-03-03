@@ -57,7 +57,7 @@ export class NinpoCommandHandler {
      */
     private async handleRandomNinpo(interaction: ChatInputCommandInteraction): Promise<void> {
         const rawCount = interaction.options.getInteger('count') ?? 1;
-        const _count = Math.min(Math.max(rawCount, 1), 10);
+        const count = Math.min(Math.max(rawCount, 1), 10);
         const categoryInput = interaction.options.getString('category') as NinpoCategory | null;
         const category: NinpoCategory = categoryInput ?? 'hanyo';
 
@@ -65,7 +65,7 @@ export class NinpoCommandHandler {
             query: '',
             searchType: 'all',
             category,
-            page: 1
+            page: count
         };
 
         const displayData = NinpoCommandHandler.buildDisplayData(criteria);
@@ -132,7 +132,13 @@ export class NinpoCommandHandler {
 
         const currentCategoryInfo = categoryInfo.get(currentCategory);
         if (!currentCategoryInfo) {
-            throw new Error(`Category ${currentCategory} not found in category info`);
+            return {
+                title,
+                ninpos: [],
+                currentPage: 1,
+                maxPage: 1,
+                searchType: criteria.searchType
+            };
         }
         const categoryPage = Math.min(criteria.page, currentCategoryInfo.pageCount || 1);
 

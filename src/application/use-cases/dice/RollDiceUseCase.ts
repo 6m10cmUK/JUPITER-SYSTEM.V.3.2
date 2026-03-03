@@ -1,7 +1,6 @@
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceExpression } from '../../../domain/value-objects/DiceExpression';
-import { DiceRollRequest, DiceRollResponse } from '../../dto/DiceRollDto';
-import { DiceRollViewModel } from '../../../presentation/viewmodels/DiceRollViewModel';
+import { DiceRollDto, DiceRollRequest, DiceRollResponse } from '../../dto/DiceRollDto';
 import { CCBRoll, ChoiceRoll } from '../../../domain/entities/DiceRoll';
 import { CoCDiceRoll, FARRoll } from '../../../domain/entities/CoCDiceRoll';
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
@@ -10,15 +9,15 @@ import { DiceRollResult, isDiceRoll, isCoCDiceRoll, isFARRoll, isCCBRoll, isBrea
 export class RollDiceUseCase {
     constructor(private readonly diceService: DiceService) {}
 
-    async execute(request: DiceRollRequest): Promise<DiceRollResponse<DiceRollViewModel>> {
+    async execute(request: DiceRollRequest): Promise<DiceRollResponse> {
         const normalizedExpression = convertFullWidthToHalfWidth(request.expression);
         const diceExpression = new DiceExpression(normalizedExpression);
-        
-        const rolls = diceExpression.hasRepeat() 
+
+        const rolls = diceExpression.hasRepeat()
             ? this.diceService.rollMultiple(diceExpression)
             : [this.diceService.roll(diceExpression)];
 
-        const rollDtos: DiceRollViewModel[] = rolls.map((roll, index) => {
+        const rollDtos: DiceRollDto[] = rolls.map((roll, index) => {
             const dto = this.mapToDto(roll);
             
             if (rolls.length > 1) {
@@ -34,7 +33,7 @@ export class RollDiceUseCase {
         };
     }
 
-    private mapToDto(roll: DiceRollResult): DiceRollViewModel {
+    private mapToDto(roll: DiceRollResult): DiceRollDto {
         if (roll instanceof CCBRoll) {
             return this.mapCCBToDto(roll);
         }
@@ -63,10 +62,9 @@ export class RollDiceUseCase {
      * @param roll CCBRollインスタンス
      * @returns DiceRollDto
      */
-    private mapCCBToDto(roll: CCBRoll): DiceRollViewModel {
+    private mapCCBToDto(roll: CCBRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
-        let color = 0x888888;
-        
+
         // 故障判定の場合（型安全なアクセス）
         const breakdownNumber = roll.getBreakdownNumber();
         if (breakdownNumber !== undefined) {
@@ -74,21 +72,17 @@ export class RollDiceUseCase {
             if (roll.getTotal() >= breakdownNumber) {
                 if (roll.isCriticalFailure()) {
                     result += `＞ **ファンブル＆故障** `;
-                    color = 0xFF0000;
                 } else {
                     result += `＞ **故障** `;
-                    color = 0xFFA500; // オレンジ色
                 }
             } else {
                 result += `＞ **正常** `;
-                color = 0x888888;
             }
         } else if (roll.getTarget()) {
             // 通常のCC/CCB判定
             if (roll.isSuccess()) {
-                color = 0x0000FF;
                 result += `**<= ${roll.getTarget()}** ＞ **成功** `;
-                
+
                 if (roll.isSpecial()) {
                     result += `**/ スペシャル** `;
                 }
@@ -96,49 +90,44 @@ export class RollDiceUseCase {
                     result += `**/ 決定的成功** `;
                 }
             } else {
-                color = 0xFF0000;
                 result += `**<=${roll.getTarget()}** ＞ **失敗** `;
-                
+
                 if (roll.isCriticalFailure()) {
                     result += `**/ 致命的失敗** `;
                 }
             }
         }
-        
+
         return {
             expression: roll.getExpression(),
             result,
-            total: roll.getTotal(),
-            color
+            total: roll.getTotal()
         };
     }
 
-    private mapChoiceToDto(roll: ChoiceRoll): DiceRollViewModel {
+    private mapChoiceToDto(roll: ChoiceRoll): DiceRollDto {
         return {
             expression: roll.getExpression(),
             result: `＞ **${roll.getSelectedChoice()}**`,
-            total: roll.getTotal(),
-            color: 0x888888
+            total: roll.getTotal()
         };
     }
 
-    private mapStandardToDto(roll: DiceRollResult): DiceRollViewModel {
+    private mapStandardToDto(roll: DiceRollResult): DiceRollDto {
         return {
             expression: roll.getExpression(),
             result: ` ＞ ${roll.getDetailedExpression()} ＞ **${roll.getTotal()}**`,
-            total: roll.getTotal(),
-            color: 0x888888
+            total: roll.getTotal()
         };
     }
 
-    private mapCoCToDto(roll: CoCDiceRoll): DiceRollViewModel {
+    private mapCoCToDto(roll: CoCDiceRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
-        let color = 0x888888;
-        
+
         const target = roll.getTarget();
         const successLevel = roll.getSuccessLevel();
         const difficulty = roll.getDifficulty();
-        
+
         if (target && successLevel) {
             // 難易度指定がある場合
             if (difficulty) {
@@ -148,15 +137,13 @@ export class RollDiceUseCase {
                     'e': 'イクストリーム',
                     'c': 'クリティカル'
                 }[difficulty];
-                
+
                 if (roll.isSuccess()) {
-                    color = 0x0000FF;
                     result += `**<= ${target}(${difficultyName})** ＞ **成功** `;
                 } else {
-                    color = 0xFF0000;
                     result += `**<= ${target}(${difficultyName})** ＞ **失敗** `;
                 }
-                
+
                 // クリティカル/ファンブル表示
                 if (successLevel === 'critical') {
                     result += `**/ クリティカル** `;
@@ -173,41 +160,29 @@ export class RollDiceUseCase {
                     'failure': '失敗',
                     'fumble': 'ファンブル'
                 };
-                
-                const levelColors = {
-                    'critical': 0x00FFFF,
-                    'extreme': 0x00FF00,
-                    'hard': 0x0080FF,
-                    'regular': 0x0000FF,
-                    'failure': 0xFF0000,
-                    'fumble': 0xFF00FF
-                };
-                
-                color = levelColors[successLevel];
+
                 result += `**<= ${target}** ＞ **${levelNames[successLevel]}** `;
             }
         }
-        
+
         return {
             expression: roll.getExpression(),
             result,
-            total: roll.getTotal(),
-            color
+            total: roll.getTotal()
         };
     }
 
-    private mapFARToDto(roll: FARRoll): DiceRollViewModel {
+    private mapFARToDto(roll: FARRoll): DiceRollDto {
         let result = `＞ **命中: ${roll.getHits()}** / **貫通: ${roll.getImpales()}** / **残弾: ${roll.getRemainingBullets()}** `;
-        
+
         if (roll.isMalfunctioned()) {
             result += `**/ 故障** `;
         }
-        
+
         return {
             expression: roll.getExpression(),
             result,
-            total: roll.getHits(),
-            color: roll.isMalfunctioned() ? 0xFF0000 : 0x888888
+            total: roll.getHits()
         };
     }
 }

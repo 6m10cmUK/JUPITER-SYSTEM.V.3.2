@@ -37,7 +37,13 @@ export class ValidationStateService {
 
         // 5分以内なら有効
         const now = Date.now();
-        return (now - timestamp) < 300000;
+        if ((now - timestamp) >= 300000) {
+            // 期限切れエントリをキャッシュから削除（肥大化防止）
+            validationCache.delete(key);
+            temporaryValueCache.delete(key);
+            return false;
+        }
+        return true;
     }
 
     /**

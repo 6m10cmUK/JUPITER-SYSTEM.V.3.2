@@ -8,6 +8,16 @@ import { NotificationScheduler } from './infrastructure/services/NotificationSch
 dotenv.config();
 
 async function main() {
+    const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+    if (!DISCORD_TOKEN) {
+        throw new Error('DISCORD_TOKEN 環境変数が設定されていません');
+    }
+
+    const PORT = parseInt(process.env.PORT || '8080');
+    if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
+        throw new Error(`無効なポート番号です: ${process.env.PORT}`);
+    }
+
     const client = new Client({
         intents: [
             GatewayIntentBits.Guilds,
@@ -26,7 +36,6 @@ async function main() {
 
     // HTTPサーバーとWebSocketサーバーの初期化
     const server = createServer();
-    const PORT = parseInt(process.env.PORT || '8080');
     const wsServer = new WebSocketServer(server, PORT);
 
     // NotificationSchedulerの初期化（起動時にスケジュールを復元）
@@ -60,7 +69,7 @@ async function main() {
         console.log(`WebSocketも同じポートで待機中`);
     });
 
-    await client.login(process.env.DISCORD_TOKEN);
+    await client.login(DISCORD_TOKEN);
 }
 
 main().catch(err => {

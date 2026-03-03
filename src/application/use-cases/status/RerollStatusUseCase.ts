@@ -9,6 +9,7 @@ import { DiceService } from '../../../domain/services/DiceService';
 import { DiceExpression } from '../../../domain/value-objects/DiceExpression';
 import { StatusServiceFactory } from '../../../domain/services/status/StatusServiceFactory';
 import { StatusResultDto } from '../../dto/StatusDto';
+import { unescapeDiscordMarkdown } from '../../../shared/utils/discordUtils';
 
 /**
  * 振り直し結果の型
@@ -19,6 +20,8 @@ export interface RerollResult {
 }
 
 export class RerollStatusUseCase {
+    constructor(private readonly diceService: DiceService = new DiceService()) {}
+
     /**
      * ステータスの振り直しを処理する
      * @param selectedStat 選択されたステータス
@@ -34,10 +37,10 @@ export class RerollStatusUseCase {
         // 検証状態の確認
         if (ValidationStateService.isValidated(messageId)) {
             // 最適化された値を計算
-            const optimalValue = StatValueCalculator.calculateOptimalValue(selectedStat, statusData.version, messageId);
+            const optimalValue = StatValueCalculator.calculateOptimalValue(selectedStat, statusData.version, messageId, ValidationStateService);
 
             // 値が-1の場合は範囲外なので通常の振り直しを実行
-            if (optimalValue !== -1) {
+            if (optimalValue !== -1 && StatValueCalculator.isValueInValidRange(selectedStat, statusData.version, optimalValue)) {
                 const details = StatValueCalculator.generateOptimalDetails(selectedStat, optimalValue);
 
                 // 検証状態をクリア
@@ -52,13 +55,13 @@ export class RerollStatusUseCase {
 
         // ステータス詳細からダイス式を抽出
         const currentDetails = statusData.primaryStatsDetails[selectedStat];
-        const customDiceExpression = DiceExpressionParser.extractDiceExpression(currentDetails);
+        const rawDiceExpression = DiceExpressionParser.extractDiceExpression(currentDetails);
+        const customDiceExpression = rawDiceExpression ? unescapeDiscordMarkdown(rawDiceExpression) : null;
 
         if (customDiceExpression) {
             // カスタムダイス式が設定されている場合はそれを使用
-            const diceService = new DiceService();
             const expression = new DiceExpression(customDiceExpression);
-            const roll = diceService.roll(expression);
+            const roll = this.diceService.roll(expression);
 
             return {
                 value: roll.getTotal(),

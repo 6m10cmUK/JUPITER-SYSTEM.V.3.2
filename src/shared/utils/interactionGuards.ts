@@ -13,7 +13,7 @@ export async function checkOwnerPermission(
 ): Promise<boolean> {
     if (interaction.user.id !== userId) {
         await interaction.reply(
-            createErrorMessage(interaction, errorTitle, 'This command can only be used on your own character.')
+            createErrorMessage(interaction, errorTitle, 'このコマンドは自分のキャラクターでのみ使用できます。')
         );
         return false;
     }

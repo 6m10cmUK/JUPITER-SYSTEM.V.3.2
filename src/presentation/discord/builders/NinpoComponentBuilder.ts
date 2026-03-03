@@ -1,11 +1,31 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { NinpoSearchCriteria, NinpoDisplayData } from '../../../application/dto/NinpoDto';
 
+// クエリ文字列の短縮キーマッピング（customId 100文字制限対策）
+const queryKeyMap = new Map<string, string>();
+
+function getShortQueryKey(query: string): string {
+    const encoded = encodeURIComponent(query);
+    if (encoded.length <= 30) return encoded;
+    // 既存のマッピングを検索
+    for (const [key, value] of queryKeyMap.entries()) {
+        if (value === encoded) return key;
+    }
+    // 新しい短縮キーを生成（タイムスタンプベース）
+    const shortKey = `q_${Date.now().toString(36)}`;
+    queryKeyMap.set(shortKey, encoded);
+    return shortKey;
+}
+
+export function resolveQueryKey(key: string): string {
+    return queryKeyMap.get(key) ?? key;
+}
+
 export class NinpoComponentBuilder {
     static createComponents(criteria: NinpoSearchCriteria, displayData: NinpoDisplayData): ActionRowBuilder<ButtonBuilder>[] {
         const { query, searchType, category } = criteria;
         const { currentPage, maxPage, categoryPages, currentCategory } = displayData;
-        const encodedQuery = encodeURIComponent(query);
+        const encodedQuery = getShortQueryKey(query);
         const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
         // ページネーションボタン

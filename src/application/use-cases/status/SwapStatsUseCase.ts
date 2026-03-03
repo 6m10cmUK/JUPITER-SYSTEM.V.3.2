@@ -14,6 +14,14 @@ export class SwapStatsUseCase {
      * @returns 更新済みStatusResultDto
      */
     execute(statusData: StatusResultDto, beforeStat: string, afterStat: string): StatusResultDto {
+        // 指定されたステータスがprimaryStatsに存在するかチェック
+        if (!(beforeStat in statusData.primaryStats) || !(afterStat in statusData.primaryStats)) {
+            throw new Error(`無効なステータス名: ${beforeStat}, ${afterStat}`);
+        }
+        if (!(beforeStat in statusData.primaryStatsDetails) || !(afterStat in statusData.primaryStatsDetails)) {
+            throw new Error(`ステータス詳細が見つかりません: ${beforeStat}, ${afterStat}`);
+        }
+
         // 値の交換
         const updatedPrimaryStats = {
             ...statusData.primaryStats,

@@ -1,6 +1,6 @@
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceExpression } from '../../../domain/value-objects/DiceExpression';
-import { DiceRollDto, DiceRollRequest, DiceRollResponse } from '../../dto/DiceRollDto';
+import { DiceOutcome, DiceRollDto, DiceRollRequest, DiceRollResponse } from '../../dto/DiceRollDto';
 import { CCBRoll, ChoiceRoll } from '../../../domain/entities/DiceRoll';
 import { CoCDiceRoll, FARRoll } from '../../../domain/entities/CoCDiceRoll';
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
@@ -64,6 +64,7 @@ export class RollDiceUseCase {
      */
     private mapCCBToDto(roll: CCBRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
+        let outcome: DiceOutcome = 'normal';
 
         // 故障判定の場合（型安全なアクセス）
         const breakdownNumber = roll.getBreakdownNumber();
@@ -72,8 +73,10 @@ export class RollDiceUseCase {
             if (roll.getTotal() >= breakdownNumber) {
                 if (roll.isCriticalFailure()) {
                     result += `＞ **ファンブル＆故障** `;
+                    outcome = 'fumble_malfunction';
                 } else {
                     result += `＞ **故障** `;
+                    outcome = 'malfunction';
                 }
             } else {
                 result += `＞ **正常** `;
@@ -82,6 +85,7 @@ export class RollDiceUseCase {
             // 通常のCC/CCB判定
             if (roll.isSuccess()) {
                 result += `**<= ${roll.getTarget()}** ＞ **成功** `;
+                outcome = 'success';
 
                 if (roll.isSpecial()) {
                     result += `**/ スペシャル** `;
@@ -91,9 +95,11 @@ export class RollDiceUseCase {
                 }
             } else {
                 result += `**<=${roll.getTarget()}** ＞ **失敗** `;
+                outcome = 'failure';
 
                 if (roll.isCriticalFailure()) {
                     result += `**/ 致命的失敗** `;
+                    outcome = 'critical_failure';
                 }
             }
         }
@@ -101,7 +107,8 @@ export class RollDiceUseCase {
         return {
             expression: roll.getExpression(),
             result,
-            total: roll.getTotal()
+            total: roll.getTotal(),
+            outcome
         };
     }
 
@@ -109,7 +116,8 @@ export class RollDiceUseCase {
         return {
             expression: roll.getExpression(),
             result: `＞ **${roll.getSelectedChoice()}**`,
-            total: roll.getTotal()
+            total: roll.getTotal(),
+            outcome: 'normal'
         };
     }
 
@@ -117,12 +125,14 @@ export class RollDiceUseCase {
         return {
             expression: roll.getExpression(),
             result: ` ＞ ${roll.getDetailedExpression()} ＞ **${roll.getTotal()}**`,
-            total: roll.getTotal()
+            total: roll.getTotal(),
+            outcome: 'normal'
         };
     }
 
     private mapCoCToDto(roll: CoCDiceRoll): DiceRollDto {
         let result = `＞ **${roll.getTotal()}** `;
+        let outcome: DiceOutcome = 'normal';
 
         const target = roll.getTarget();
         const successLevel = roll.getSuccessLevel();
@@ -140,15 +150,19 @@ export class RollDiceUseCase {
 
                 if (roll.isSuccess()) {
                     result += `**<= ${target}(${difficultyName})** ＞ **成功** `;
+                    outcome = 'success';
                 } else {
                     result += `**<= ${target}(${difficultyName})** ＞ **失敗** `;
+                    outcome = 'failure';
                 }
 
                 // クリティカル/ファンブル表示
                 if (successLevel === 'critical') {
                     result += `**/ クリティカル** `;
+                    outcome = 'critical';
                 } else if (successLevel === 'fumble') {
                     result += `**/ ファンブル** `;
+                    outcome = 'fumble';
                 }
             } else {
                 // 通常の成功レベル判定
@@ -161,28 +175,42 @@ export class RollDiceUseCase {
                     'fumble': 'ファンブル'
                 };
 
+                const successLevelToOutcome: Record<string, DiceOutcome> = {
+                    'critical': 'critical',
+                    'extreme': 'extreme_success',
+                    'hard': 'hard_success',
+                    'regular': 'regular_success',
+                    'failure': 'failure',
+                    'fumble': 'fumble'
+                };
+
                 result += `**<= ${target}** ＞ **${levelNames[successLevel]}** `;
+                outcome = successLevelToOutcome[successLevel] ?? 'normal';
             }
         }
 
         return {
             expression: roll.getExpression(),
             result,
-            total: roll.getTotal()
+            total: roll.getTotal(),
+            outcome
         };
     }
 
     private mapFARToDto(roll: FARRoll): DiceRollDto {
         let result = `＞ **命中: ${roll.getHits()}** / **貫通: ${roll.getImpales()}** / **残弾: ${roll.getRemainingBullets()}** `;
+        let outcome: DiceOutcome = 'normal';
 
         if (roll.isMalfunctioned()) {
             result += `**/ 故障** `;
+            outcome = 'malfunction';
         }
 
         return {
             expression: roll.getExpression(),
             result,
-            total: roll.getHits()
+            total: roll.getHits(),
+            outcome
         };
     }
 }

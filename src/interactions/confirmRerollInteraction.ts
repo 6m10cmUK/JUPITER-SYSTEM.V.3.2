@@ -71,12 +71,11 @@ export async function execute(interaction: ButtonInteraction) {
         details,
         customDiceExpression
     );
-    const mergedData = { ...statusData, ...updatedData };
 
     // ステータス表示を更新
     const formatter = new StatusEmbedFormatter();
-    const updatedEmbed = await formatter.format(mergedData, interaction);
-    const components = StatusComponentBuilder.createComponents(mergedData, messageId, userId);
+    const updatedEmbed = await formatter.format(updatedData, interaction);
+    const components = StatusComponentBuilder.createComponents(updatedData, messageId, userId);
 
     await originalMessage.edit({ embeds: [updatedEmbed], components });
 

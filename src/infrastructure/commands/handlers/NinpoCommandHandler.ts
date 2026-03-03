@@ -105,8 +105,13 @@ export class NinpoCommandHandler {
      * NinpoSearchCriteria から NinpoDisplayData を構築する
      */
     buildDisplayData(criteria: NinpoSearchCriteria): NinpoDisplayData {
-        const allNinpos = this.ninpoService.searchNinpo(criteria);
+        let allNinpos = this.ninpoService.searchNinpo(criteria);
         const title = this.ninpoService.getTitle(criteria);
+
+        // searchNinpoがlimitを適用しない場合があるため、明示的に制限
+        if (criteria.limit != null) {
+            allNinpos = allNinpos.slice(0, criteria.limit);
+        }
 
         // 検索の場合はカテゴリ分けしない
         if (criteria.searchType !== 'all') {

@@ -33,10 +33,15 @@ export class WordleGame {
   }
 
   addGuess(guess: GuessResult[]): void {
-    this.guesses.push(guess);
+    if (guess.length !== this.answer.length) {
+      throw new Error('Invalid guess length');
+    }
 
-    // 正解チェック（空配列の場合はevery()がtrueを返すため除外）
-    if (guess.length > 0 && guess.every(r => r.status === 'correct')) {
+    const safeGuess = guess.map(item => ({ ...item }));
+    this.guesses.push(safeGuess);
+
+    // 正解チェック
+    if (safeGuess.every(r => r.status === 'correct')) {
       this._completed = true;
       this._won = true;
     }

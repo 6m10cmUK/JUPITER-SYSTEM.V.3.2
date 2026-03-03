@@ -1,6 +1,6 @@
 import { ButtonInteraction } from 'discord.js';
 import { NinpoEmbedFormatter } from '../presentation/formatters/NinpoEmbedFormatter';
-import { NinpoComponentBuilder, resolveQueryKey } from '../presentation/discord/builders/NinpoComponentBuilder';
+import { NinpoComponentBuilder, resolveQueryKey, resolveCategoryKey } from '../presentation/discord/builders/NinpoComponentBuilder';
 import { NinpoCommandHandler } from '../infrastructure/commands/handlers/NinpoCommandHandler';
 import { NinpoSearchCriteria } from '../application/dto/NinpoDto';
 
@@ -19,12 +19,19 @@ export async function execute(interaction: ButtonInteraction) {
             return;
         }
 
+        const resolvedQuery = resolveQueryKey(query);
+        const resolvedCategory = resolveCategoryKey(ninpoCategory);
+        if (resolvedQuery === null) {
+            console.error('Failed to resolve query key:', query);
+            return;
+        }
+
         criteria = {
-            query: decodeURIComponent(resolveQueryKey(query)),
+            query: decodeURIComponent(resolvedQuery),
             searchType: searchType as NinpoSearchCriteria['searchType'],
             category: category as NinpoSearchCriteria['category'],
             page: Number(page),
-            ninpoCategory: resolveQueryKey(ninpoCategory)
+            ninpoCategory: resolvedCategory ?? undefined
         };
     } else if (parts.length === 6) {
         // 古い形式（互換性のため）
@@ -34,8 +41,14 @@ export async function execute(interaction: ButtonInteraction) {
             return;
         }
 
+        const resolvedQuery2 = resolveQueryKey(query);
+        if (resolvedQuery2 === null) {
+            console.error('Failed to resolve query key:', query);
+            return;
+        }
+
         criteria = {
-            query: decodeURIComponent(resolveQueryKey(query)),
+            query: decodeURIComponent(resolvedQuery2),
             searchType: searchType as NinpoSearchCriteria['searchType'],
             category: category as NinpoSearchCriteria['category'],
             page: Number(page)

@@ -13,9 +13,10 @@ async function main() {
         throw new Error('DISCORD_TOKEN 環境変数が設定されていません');
     }
 
-    const PORT = parseInt(process.env.PORT || '8080');
-    if (isNaN(PORT) || PORT < 1 || PORT > 65535) {
-        throw new Error(`無効なポート番号です: ${process.env.PORT}`);
+    const rawPort = process.env.PORT ?? '8080';
+    const PORT = Number(rawPort);
+    if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+        throw new Error(`無効なポート番号です: ${rawPort}`);
     }
 
     const client = new Client({

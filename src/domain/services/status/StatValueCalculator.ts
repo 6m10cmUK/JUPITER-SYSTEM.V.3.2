@@ -72,20 +72,6 @@ export class StatValueCalculator {
             return '(' + StatValueCalculator.generateDiceCombo(value, 3, 6, 0) + ')';
         }
 
-        // デフォルト
-        const patterns: Record<string, string[]> = {
-            '18': ['6,6,6', '(6,6)+6'],
-            '21': ['(6,6,6)+3']
-        };
-
-        if (value === 21) return patterns['21'][0];
-        if (value === 18) {
-            if (['SIZ', 'INT'].includes(type)) {
-                return patterns['18'][1];
-            }
-            return patterns['18'][0];
-        }
-
         return '6,6,6';
     }
 

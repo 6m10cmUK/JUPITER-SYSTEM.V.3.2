@@ -30,29 +30,40 @@ function cleanupShortKeyMap(): void {
     }
 }
 
-function getShortKey(value: string, maxLen: number): string {
+function getShortKey(prefix: string, value: string, maxLen: number): string {
     if (value.length <= maxLen) return value;
-    // 既存のマッピングを検索
+    // 既存のマッピングを検索（prefix付きキーで検索）
     for (const [key, entry] of shortKeyMap.entries()) {
-        if (entry.value === value) return key;
+        if (key.startsWith(prefix) && entry.value === value) return key.slice(prefix.length);
     }
     cleanupShortKeyMap();
     const shortKey = randomUUID().slice(0, 8);
-    shortKeyMap.set(shortKey, { value, createdAt: Date.now() });
+    shortKeyMap.set(`${prefix}${shortKey}`, { value, createdAt: Date.now() });
     return shortKey;
 }
 
 function getShortQueryKey(query: string): string {
     const encoded = encodeURIComponent(query);
-    return getShortKey(encoded, 30);
+    return getShortKey('q:', encoded, 30);
 }
 
 function getShortCategoryKey(category: string): string {
-    return getShortKey(category, 20);
+    return getShortKey('c:', category, 20);
 }
 
-export function resolveQueryKey(key: string): string {
-    return shortKeyMap.get(key)?.value ?? key;
+export function resolveQueryKey(key: string): string | null {
+    const entry = shortKeyMap.get(`q:${key}`);
+    if (!entry) {
+        // 短縮されていない場合（元の値がそのまま使われている）
+        return key || null;
+    }
+    return entry.value;
+}
+
+export function resolveCategoryKey(key: string): string | null {
+    if (!key) return null;
+    const entry = shortKeyMap.get(`c:${key}`);
+    return entry?.value ?? key;
 }
 
 export class NinpoComponentBuilder {
@@ -60,7 +71,7 @@ export class NinpoComponentBuilder {
         const { query, searchType, category } = criteria;
         const { currentPage, maxPage, categoryPages, currentCategory } = displayData;
         const encodedQuery = getShortQueryKey(query);
-        const shortCurrentCategory = currentCategory ? getShortCategoryKey(currentCategory) : undefined;
+        const shortCurrentCategory = currentCategory ? getShortCategoryKey(currentCategory) : '';
         const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
         // ページネーションボタン

@@ -1,10 +1,11 @@
 import { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { StatusResultDto } from '../../../application/dto/StatusDto';
+import { StatusViewModel } from '../../viewmodels/StatusViewModel';
 import { unescapeDiscordMarkdown } from '../../../shared/utils/discordUtils';
+import { getStatOrder } from '../../../domain/constants/StatOrder';
 
 export class StatusComponentBuilder {
     static createComponents(
-        statusData: StatusResultDto,
+        statusData: StatusViewModel,
         messageId: string,
         userId: string
     ): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
@@ -51,9 +52,7 @@ export class StatusComponentBuilder {
         );
         
         // iachara出力ボタン
-        const statOrder = statusData.version === '6' 
-            ? ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU']
-            : ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC'];
+        const statOrder = getStatOrder(statusData.version);
         
         const urlParams = statOrder.map(stat => `${stat}=${statusData.primaryStats[stat]}`).join('&');
         const iacharaUrl = `https://iachara.com/new/costom/webdice?var=${statusData.version}&${urlParams}`;

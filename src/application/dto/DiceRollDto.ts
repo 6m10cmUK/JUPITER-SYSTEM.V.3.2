@@ -2,7 +2,6 @@ export interface DiceRollDto {
     expression: string;
     result: string;
     total: number;
-    color: number;
 }
 
 export interface DiceRollRequest {
@@ -11,7 +10,7 @@ export interface DiceRollRequest {
     guildId?: string;
 }
 
-export interface DiceRollResponse {
-    rolls: DiceRollDto[];
+export interface DiceRollResponse<T extends DiceRollDto = DiceRollDto> {
+    rolls: T[];
     originalExpression: string;
 }

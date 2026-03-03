@@ -4,7 +4,7 @@ import {
     SlashCommandBuilder,
     ColorResolvable,
 } from 'discord.js';
-import { Command } from '../../interfaces/Command';
+import { Command } from '../../shared/interfaces/Command';
 import axios from 'axios';
 
 

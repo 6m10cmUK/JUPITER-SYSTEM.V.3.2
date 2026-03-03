@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, SlashCommandStringOption } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { StatusCommandHandler } from './handlers/StatusCommandHandler';
+import { Command } from '../../shared/interfaces/Command';
+import { createStatusCommandHandler } from '../factories/CommandHandlerFactory';
 import { StatusType, CoCVersion } from '../../application/dto/StatusDto';
 
 /**
@@ -51,7 +51,7 @@ export const command: Command = {
         
     async execute(interaction: ChatInputCommandInteraction) {
         // StatusCommandHandlerに処理を委譲（統一パターン）
-        const handler = new StatusCommandHandler();
+        const handler = createStatusCommandHandler();
         await handler.handle(interaction);
     }
 }; 

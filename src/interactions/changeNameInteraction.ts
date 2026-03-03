@@ -6,7 +6,7 @@ import {
     ActionRowBuilder,
     ModalSubmitInteraction
 } from 'discord.js';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
@@ -18,10 +18,7 @@ export async function execute(interaction: ButtonInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    if (interaction.user.id !== userId) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE NAME FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE NAME FAILED')) return;
 
     const modal = new ModalBuilder()
         .setCustomId(`nameChangeModal:${messageId}:${userId}`)
@@ -47,10 +44,7 @@ export async function handleNameChangeModal(interaction: ModalSubmitInteraction)
     const newName = interaction.fields.getTextInputValue('name');
 
     // 権限チェック
-    if (interaction.user.id !== userId) {
-        await interaction.reply(createErrorMessage(interaction, `CHANGE NAME FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CHANGE NAME FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 

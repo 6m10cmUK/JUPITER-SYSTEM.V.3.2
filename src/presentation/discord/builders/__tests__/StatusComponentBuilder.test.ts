@@ -1,13 +1,13 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { StatusComponentBuilder } from '../StatusComponentBuilder';
-import { StatusResultDto } from '../../../../application/dto/StatusDto';
+import { StatusViewModel } from '../../../viewmodels/StatusViewModel';
 
 describe('StatusComponentBuilder', () => {
     const mockMessageId = 'test-message-123';
     const mockUserId = 'test-user-456';
 
-    const createMockStatusData = (version: '6' | '7', showCustomMenu = false): StatusResultDto => ({
+    const createMockStatusData = (version: '6' | '7', showCustomMenu = false): StatusViewModel => ({
         version,
         characterName: 'テストキャラクター',
         primaryStats: {

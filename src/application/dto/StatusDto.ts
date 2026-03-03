@@ -66,9 +66,6 @@ export interface StatusResultDto {
     secondaryStats: SecondaryStats;
     rerollCount: number;
     history: string;
-    messageId?: string;
-    userId?: string;
-    showCustomMenu?: boolean;
 }
 
 /**

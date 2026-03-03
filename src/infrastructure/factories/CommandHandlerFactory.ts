@@ -1,123 +1,77 @@
-import { ChatInputCommandInteraction } from 'discord.js';
+import { Guild } from 'discord.js';
 
-// 統一されたハンドラーインターフェース（簡潔版）
-interface UnifiedCommandHandler {
-    handle(interaction: ChatInputCommandInteraction): Promise<void>;
-}
-
+// Handlers
 import { StatusCommandHandler } from '../commands/handlers/StatusCommandHandler';
 import { RollCommandHandler } from '../commands/handlers/RollCommandHandler';
-import { FeatureCommandHandler } from '../commands/handlers/FeatureCommandHandler';
 import { JobCommandHandler } from '../commands/handlers/JobCommandHandler';
 import { NinpoCommandHandler } from '../commands/handlers/NinpoCommandHandler';
-import { ChoiceCommandHandler } from '../commands/handlers/ChoiceCommandHandler';
-import { NameCommandHandler } from '../commands/handlers/NameCommandHandler';
-import { ScheduleCommandHandler } from '../commands/handlers/ScheduleCommandHandler';
+import { DensukeCommandHandler } from '../commands/handlers/densukeCommandHandler';
+import { CategoryCommandHandler } from '../commands/handlers/CategoryCommandHandler';
+import { TableCommandHandler } from '../commands/handlers/TableCommandHandler';
+
+// Dependencies - Application layer
+import { GenerateStatusUseCase } from '../../application/use-cases/status/GenerateStatusUseCase';
+import { RollDiceUseCase } from '../../application/use-cases/dice/RollDiceUseCase';
+
+// Dependencies - Domain layer
+import { DiceService } from '../../domain/services/DiceService';
+import { HolidayService } from '../../domain/services/holidayService';
+import { CategoryManagementService } from '../../domain/services/CategoryManagementService';
+import { ChannelLogService } from '../../domain/services/ChannelLogService';
+
+// Dependencies - Presentation layer
+import { StatusEmbedFormatter } from '../../presentation/formatters/StatusEmbedFormatter';
+import { DiceEmbedFormatter } from '../../presentation/formatters/DiceEmbedFormatter';
+import { JobEmbedFormatter } from '../../presentation/formatters/JobEmbedFormatter';
+import { NinpoEmbedFormatter } from '../../presentation/formatters/NinpoEmbedFormatter';
+import { DensukeEmbedFormatter } from '../../presentation/formatters/densukeEmbedFormatter';
+
+/** Guild依存サービスの遅延生成ファクトリ型 */
+export type GuildServiceFactory<T> = (guild: Guild) => T;
 
 /**
- * コマンドハンドラーファクトリー（Dependency Injection）
- * 統一されたハンドラー生成とシングルトン管理
+ * 型安全なコマンドハンドラーファクトリ関数群
+ * 各ハンドラーの依存関係を明示的に組み立てる
  */
-export class CommandHandlerFactory {
-    private static instances = new Map<string, UnifiedCommandHandler>();
 
-    /**
-     * 指定されたハンドラー型のインスタンスを取得
-     * @param handlerType ハンドラークラス
-     * @param dependencies 依存関係（オプション）
-     * @returns ハンドラーインスタンス
-     */
-    static create<T extends UnifiedCommandHandler>(
-        handlerType: new (...args: any[]) => T,
-        dependencies?: any[]
-    ): T {
-        const handlerName = handlerType.name;
-        
-        // シングルトンパターンでインスタンス管理
-        if (!this.instances.has(handlerName)) {
-            const instance = new handlerType(...(dependencies || []));
-            this.instances.set(handlerName, instance);
-        }
-        
-        return this.instances.get(handlerName) as T;
-    }
+export function createStatusCommandHandler(): StatusCommandHandler {
+    const useCase = new GenerateStatusUseCase();
+    const formatter = new StatusEmbedFormatter();
+    return new StatusCommandHandler(useCase, formatter);
+}
 
-    /**
-     * 事前定義されたハンドラーを取得（型安全）
-     * @param handlerName ハンドラー名
-     * @returns ハンドラーインスタンス
-     */
-    static getHandler(handlerName: string): UnifiedCommandHandler | undefined {
-        return this.instances.get(handlerName);
-    }
+export function createRollCommandHandler(): RollCommandHandler {
+    const diceService = new DiceService();
+    const useCase = new RollDiceUseCase(diceService);
+    const formatter = new DiceEmbedFormatter();
+    return new RollCommandHandler(useCase, formatter);
+}
 
-    /**
-     * コマンド名からハンドラーを取得
-     * @param commandName コマンド名
-     * @returns ハンドラーインスタンス
-     */
-    static getHandlerByCommandName(commandName: string): UnifiedCommandHandler {
-        switch (commandName) {
-            case 'status':
-                return this.create(StatusCommandHandler);
-            case 'roll':
-                return this.create(RollCommandHandler);
-            case 'feature':
-                return this.create(FeatureCommandHandler);
-            case 'job':
-                return this.create(JobCommandHandler);
-            case 'ninpo':
-                return this.create(NinpoCommandHandler);
-            case 'choice':
-                return this.create(ChoiceCommandHandler);
-            case 'name':
-                return this.create(NameCommandHandler);
-            case 'schedule':
-                return this.create(ScheduleCommandHandler);
-            default:
-                throw new Error(`No handler found for command: ${commandName}`);
-        }
-    }
+export function createJobCommandHandler(): JobCommandHandler {
+    const formatter = new JobEmbedFormatter();
+    return new JobCommandHandler(formatter);
+}
 
-    /**
-     * 全ハンドラーのプリロード（起動時最適化）
-     */
-    static preloadHandlers(): void {
-        const handlerClasses = [
-            StatusCommandHandler,
-            RollCommandHandler,
-            FeatureCommandHandler,
-            JobCommandHandler,
-            NinpoCommandHandler,
-            ChoiceCommandHandler,
-            NameCommandHandler,
-            ScheduleCommandHandler
-        ];
+export function createNinpoCommandHandler(): NinpoCommandHandler {
+    const formatter = new NinpoEmbedFormatter();
+    return new NinpoCommandHandler(formatter);
+}
 
-        handlerClasses.forEach(handlerClass => {
-            this.create(handlerClass);
-        });
+export function createDensukeCommandHandler(): DensukeCommandHandler {
+    const holidayService = new HolidayService();
+    const formatter = new DensukeEmbedFormatter();
+    return new DensukeCommandHandler(holidayService, formatter);
+}
 
-        console.log(`Preloaded ${handlerClasses.length} command handlers`);
-    }
+export function createCategoryCommandHandler(): CategoryCommandHandler {
+    return new CategoryCommandHandler(
+        (guild: Guild) => new CategoryManagementService(guild)
+    );
+}
 
-    /**
-     * キャッシュクリア（テスト用）
-     */
-    static clearCache(): void {
-        this.instances.clear();
-    }
-
-    /**
-     * インスタンス統計情報を取得
-     */
-    static getStats(): {
-        totalHandlers: number;
-        handlerNames: string[];
-    } {
-        return {
-            totalHandlers: this.instances.size,
-            handlerNames: Array.from(this.instances.keys())
-        };
-    }
+export function createTableCommandHandler(): TableCommandHandler {
+    return new TableCommandHandler(
+        (guild: Guild) => new CategoryManagementService(guild),
+        (guild: Guild) => new ChannelLogService(guild)
+    );
 }

@@ -1,5 +1,5 @@
 import { rollDice } from '../../utils/dice';
-import { StatusVersion, BaseStatusData, StatusRollResult } from '../../interfaces/StatusVersion';
+import { StatusVersion, BaseStatusData, StatusRollResult } from '../../../shared/interfaces/StatusVersion';
 import { SecondaryStats } from '../../../application/dto/StatusDto';
 
 export abstract class BaseStatusService implements StatusVersion {

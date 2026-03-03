@@ -2,7 +2,7 @@ import {
     ChatInputCommandInteraction, 
     SlashCommandBuilder
 } from 'discord.js';
-import { Command } from '../../interfaces/Command';
+import { Command } from '../../shared/interfaces/Command';
 import { SimpleCommandHandler } from './handlers/SimpleCommandHandler';
 
 /**

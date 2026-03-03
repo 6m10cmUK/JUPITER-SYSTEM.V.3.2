@@ -2,18 +2,16 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { GenerateStatusUseCase } from '../../../application/use-cases/status/GenerateStatusUseCase';
 import { StatusEmbedFormatter } from '../../../presentation/formatters/StatusEmbedFormatter';
 import { StatusResultDto, CoCVersion } from '../../../application/dto/StatusDto';
+import { StatusViewModel } from '../../../presentation/viewmodels/StatusViewModel';
 import { StatusComponentBuilder } from '../../../presentation/discord/builders/StatusComponentBuilder';
-import { CommandHandler, ValidationError } from '../../../interfaces/patterns/CommandPatterns';
+import { CommandHandler, ValidationError } from '../../../shared/interfaces/patterns/CommandPatterns';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 
 export class StatusCommandHandler implements CommandHandler {
-    private readonly generateStatusUseCase: GenerateStatusUseCase;
-    private readonly formatter: StatusEmbedFormatter;
-    
-    constructor() {
-        this.generateStatusUseCase = new GenerateStatusUseCase();
-        this.formatter = new StatusEmbedFormatter();
-    }
+    constructor(
+        private readonly generateStatusUseCase: GenerateStatusUseCase,
+        private readonly formatter: StatusEmbedFormatter
+    ) {}
     
     /**
      * ステータス生成処理（統一インターフェース準拠）
@@ -49,7 +47,7 @@ export class StatusCommandHandler implements CommandHandler {
     }
 
     /**
-     * ステータス生成の実際の処理（並列処理最適化）
+     * ステータス生成の実際の処理（層別順次実行）
      * @param interaction Discord インタラクション
      * @param version CoCのバージョン
      * @param characterName キャラクター名
@@ -61,25 +59,26 @@ export class StatusCommandHandler implements CommandHandler {
         characterName: string,
         showCustomMenu: boolean
     ): Promise<void> {
-        // 並列処理による最適化: Discord API呼び出しとステータス生成を同時実行
-        const [replyMessage, statusResult] = await Promise.all([
-            interaction.deferReply().then(() => interaction.fetchReply()),
-            this.generateStatusAsync(version, characterName, interaction.user.id)
-        ]);
-        
+        // 1. Presentation層: Discord API呼び出し
+        await interaction.deferReply();
+        const replyMessage = await interaction.fetchReply();
         const messageId = replyMessage?.id || '';
-        
-        // messageIdを後から設定（メッセージ生成後に決まるため）
-        statusResult.messageId = messageId;
-        statusResult.userId = interaction.user.id;
-        statusResult.showCustomMenu = showCustomMenu;
-        
-        // UI生成も並列化（Embed生成とComponent生成を同時実行）
-        const [embed, components] = await Promise.all([
-            this.formatter.format(statusResult, interaction),
-            Promise.resolve(StatusComponentBuilder.createComponents(statusResult, messageId, interaction.user.id))
-        ]);
-        
+
+        // 2. Application層: ステータス生成
+        const statusResult = await this.generateStatusAsync(version, characterName, interaction.user.id);
+
+        // 3. StatusResultDto → StatusViewModel にUI状態を付与
+        const statusViewModel: StatusViewModel = {
+            ...statusResult,
+            messageId,
+            userId: interaction.user.id,
+            showCustomMenu,
+        };
+
+        // 4. Presentation層: UI生成・返却
+        const embed = await this.formatter.format(statusViewModel, interaction);
+        const components = StatusComponentBuilder.createComponents(statusViewModel, messageId, interaction.user.id);
+
         await interaction.editReply({ embeds: [embed], components });
     }
     

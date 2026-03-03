@@ -1,6 +1,7 @@
 import { DiceService } from '../../../domain/services/DiceService';
 import { DiceExpression } from '../../../domain/value-objects/DiceExpression';
-import { DiceRollRequest, DiceRollResponse, DiceRollDto } from '../../dto/DiceRollDto';
+import { DiceRollRequest, DiceRollResponse } from '../../dto/DiceRollDto';
+import { DiceRollViewModel } from '../../../presentation/viewmodels/DiceRollViewModel';
 import { CCBRoll, ChoiceRoll } from '../../../domain/entities/DiceRoll';
 import { CoCDiceRoll, FARRoll } from '../../../domain/entities/CoCDiceRoll';
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
@@ -9,7 +10,7 @@ import { DiceRollResult, isDiceRoll, isCoCDiceRoll, isFARRoll, isCCBRoll, isBrea
 export class RollDiceUseCase {
     constructor(private readonly diceService: DiceService) {}
 
-    async execute(request: DiceRollRequest): Promise<DiceRollResponse> {
+    async execute(request: DiceRollRequest): Promise<DiceRollResponse<DiceRollViewModel>> {
         const normalizedExpression = convertFullWidthToHalfWidth(request.expression);
         const diceExpression = new DiceExpression(normalizedExpression);
         
@@ -17,7 +18,7 @@ export class RollDiceUseCase {
             ? this.diceService.rollMultiple(diceExpression)
             : [this.diceService.roll(diceExpression)];
 
-        const rollDtos: DiceRollDto[] = rolls.map((roll, index) => {
+        const rollDtos: DiceRollViewModel[] = rolls.map((roll, index) => {
             const dto = this.mapToDto(roll);
             
             if (rolls.length > 1) {
@@ -33,7 +34,7 @@ export class RollDiceUseCase {
         };
     }
 
-    private mapToDto(roll: DiceRollResult): DiceRollDto {
+    private mapToDto(roll: DiceRollResult): DiceRollViewModel {
         if (roll instanceof CCBRoll) {
             return this.mapCCBToDto(roll);
         }
@@ -62,7 +63,7 @@ export class RollDiceUseCase {
      * @param roll CCBRollインスタンス
      * @returns DiceRollDto
      */
-    private mapCCBToDto(roll: CCBRoll): DiceRollDto {
+    private mapCCBToDto(roll: CCBRoll): DiceRollViewModel {
         let result = `＞ **${roll.getTotal()}** `;
         let color = 0x888888;
         
@@ -112,7 +113,7 @@ export class RollDiceUseCase {
         };
     }
 
-    private mapChoiceToDto(roll: ChoiceRoll): DiceRollDto {
+    private mapChoiceToDto(roll: ChoiceRoll): DiceRollViewModel {
         return {
             expression: roll.getExpression(),
             result: `＞ **${roll.getSelectedChoice()}**`,
@@ -121,7 +122,7 @@ export class RollDiceUseCase {
         };
     }
 
-    private mapStandardToDto(roll: DiceRollResult): DiceRollDto {
+    private mapStandardToDto(roll: DiceRollResult): DiceRollViewModel {
         return {
             expression: roll.getExpression(),
             result: ` ＞ ${roll.getDetailedExpression()} ＞ **${roll.getTotal()}**`,
@@ -130,7 +131,7 @@ export class RollDiceUseCase {
         };
     }
 
-    private mapCoCToDto(roll: CoCDiceRoll): DiceRollDto {
+    private mapCoCToDto(roll: CoCDiceRoll): DiceRollViewModel {
         let result = `＞ **${roll.getTotal()}** `;
         let color = 0x888888;
         
@@ -195,7 +196,7 @@ export class RollDiceUseCase {
         };
     }
 
-    private mapFARToDto(roll: FARRoll): DiceRollDto {
+    private mapFARToDto(roll: FARRoll): DiceRollViewModel {
         let result = `＞ **命中: ${roll.getHits()}** / **貫通: ${roll.getImpales()}** / **残弾: ${roll.getRemainingBullets()}** `;
         
         if (roll.isMalfunctioned()) {

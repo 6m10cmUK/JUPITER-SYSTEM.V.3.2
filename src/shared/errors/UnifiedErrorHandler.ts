@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { DiceSystemError } from './DiceSystemError';
 import { FeatureSystemError } from '../../application/dto/FeatureDto';
 import { StatusGenerationError } from '../../application/dto/StatusDto';
-import { ValidationError } from '../../interfaces/patterns/CommandPatterns';
+import { ValidationError } from '../../shared/interfaces/patterns/CommandPatterns';
 
 /**
  * 統一エラーハンドラー

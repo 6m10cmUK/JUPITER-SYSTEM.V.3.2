@@ -7,11 +7,9 @@ import { JobSearchCriteria } from '../../../application/dto/JobDto';
  * ビジネスロジックを適切に分離し、統一的なアーキテクチャを実現
  */
 export class JobCommandHandler {
-    private readonly formatter: JobEmbedFormatter;
-
-    constructor() {
-        this.formatter = new JobEmbedFormatter();
-    }
+    constructor(
+        private readonly formatter: JobEmbedFormatter
+    ) {}
 
     /**
      * 職業検索処理を実行

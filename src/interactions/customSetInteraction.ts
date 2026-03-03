@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { SecondaryStats } from '../application/dto/StatusDto';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
@@ -16,6 +16,7 @@ import { StatusServiceFactory } from '../domain/services/status/StatusServiceFac
 import { DiceService } from '../domain/services/DiceService';
 import { DiceExpression } from '../domain/value-objects/DiceExpression';
 import { escapeDiscordMarkdown } from '../shared/utils/discordUtils';
+import { DiceExpressionParser } from '../domain/services/DiceExpressionParser';
 
 export const prefix = 'customSet';
 
@@ -23,10 +24,7 @@ export async function execute(interaction: StringSelectMenuInteraction) {
     const [_, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    if (interaction.user.id !== userId) {
-        await interaction.reply(createErrorMessage(interaction, `CUSTOM SET FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CUSTOM SET FAILED')) return;
 
     const selectedStat = interaction.values[0].toUpperCase();
 
@@ -85,10 +83,7 @@ export async function handleCustomSetModal(interaction: ModalSubmitInteraction) 
     const diceExpression = interaction.fields.getTextInputValue('diceExpression');
 
     // 権限チェック
-    if (interaction.user.id !== userId) {
-        await interaction.reply(createErrorMessage(interaction, `CUSTOM SET FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'CUSTOM SET FAILED')) return;
 
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
 
@@ -133,12 +128,12 @@ export async function handleCustomSetModal(interaction: ModalSubmitInteraction) 
         // 詳細にダイス式を含める形式: "2d6+6: (4,5)+6"
         const detailedExpression = roll.getDetailedExpression();
         // "2d6+6 ＞ (5,4)+6 ＞ 18" のような形式から "(5,4)+6" の部分を抽出
-        const match = detailedExpression.match(/＞\s*(\([^)]+\)[^＞]*)(?:\s*＞|$)/);
+        const extractedDetail = DiceExpressionParser.extractDetailPart(detailedExpression);
         
         // ダイス式と詳細をエスケープして保存
         const escapedDiceExpression = escapeDiscordMarkdown(diceExpression);
-        if (match) {
-            const escapedResult = escapeDiscordMarkdown(match[1].trim());
+        if (extractedDetail) {
+            const escapedResult = escapeDiscordMarkdown(extractedDetail);
             statusData.primaryStatsDetails[statType] = `${escapedDiceExpression}: ${escapedResult}`;
         } else {
             // フォールバック: ダイス式部分を除去

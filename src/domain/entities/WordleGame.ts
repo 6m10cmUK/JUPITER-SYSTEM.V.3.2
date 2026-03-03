@@ -1,23 +1,44 @@
 import { GuessResult } from '../services/WordleService';
 
 export class WordleGame {
+  private guesses: GuessResult[][] = [];
+  private _completed: boolean = false;
+  private _won: boolean = false;
+
   constructor(
     public readonly userId: string,
     public readonly channelId: string,
     public readonly answer: string,
     public readonly startTime: Date,
-    public guesses: GuessResult[][] = [],
-    public completed: boolean = false,
-    public won: boolean = false
-  ) {}
+    initialGuesses: GuessResult[][] = [],
+    completed: boolean = false,
+    won: boolean = false
+  ) {
+    this.guesses = initialGuesses;
+    this._completed = completed;
+    this._won = won;
+  }
+
+  get isCompleted(): boolean {
+    return this._completed;
+  }
+
+  get isWon(): boolean {
+    return this._won;
+  }
+
+  markCompleted(won: boolean): void {
+    this._completed = true;
+    this._won = won;
+  }
 
   addGuess(guess: GuessResult[]): void {
     this.guesses.push(guess);
-    
+
     // 正解チェック
     if (guess.every(r => r.status === 'correct')) {
-      this.completed = true;
-      this.won = true;
+      this._completed = true;
+      this._won = true;
     }
   }
 
@@ -26,7 +47,7 @@ export class WordleGame {
   }
 
   getGuessHistory(): string {
-    return this.guesses.map((guess, index) => 
+    return this.guesses.map((guess, index) =>
       `${index + 1}. ${guess.map(r => {
         switch (r.status) {
           case 'correct': return `🟩`;

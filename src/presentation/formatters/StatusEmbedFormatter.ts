@@ -1,10 +1,11 @@
 import { EmbedBuilder, Interaction } from 'discord.js';
-import { StatusResultDto } from '../../application/dto/StatusDto';
+import { StatusViewModel } from '../viewmodels/StatusViewModel';
 import { embedColor } from '../../config/discord_config';
 import { generateEmbed } from '../discord/builders/embedGenerator';
+import { getStatOrder } from '../../domain/constants/StatOrder';
 
 export class StatusEmbedFormatter {
-    async format(statusData: StatusResultDto, interaction: Interaction): Promise<EmbedBuilder> {
+    async format(statusData: StatusViewModel, interaction: Interaction): Promise<EmbedBuilder> {
         const user = await interaction.client.users.fetch(interaction.user.id);
         
         const title = statusData.showCustomMenu 
@@ -18,9 +19,7 @@ export class StatusEmbedFormatter {
             .setFooter({ text: statusData.version });
         
         // 各ステータスを番号付きフィールドとして追加
-        const statOrder = statusData.version === '6' 
-            ? ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU']
-            : ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC'];
+        const statOrder = getStatOrder(statusData.version);
         
         statOrder.forEach((stat, index) => {
             embed.addFields({

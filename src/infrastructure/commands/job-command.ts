@@ -5,8 +5,8 @@ import {
     SlashCommandSubcommandBuilder, 
     SlashCommandIntegerOption 
 } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { JobCommandHandler } from './handlers/JobCommandHandler';
+import { Command } from '../../shared/interfaces/Command';
+import { createJobCommandHandler } from '../factories/CommandHandlerFactory';
 
 /**
  * CoC TRPG用の職業検索・生成コマンド
@@ -62,7 +62,7 @@ export const command: Command = {
 
     async execute(interaction: ChatInputCommandInteraction) {
         // JobCommandHandlerに処理を委譲（statusコマンドと同様のパターン）
-        const handler = new JobCommandHandler();
+        const handler = createJobCommandHandler();
         await handler.handle(interaction);
     }
 };

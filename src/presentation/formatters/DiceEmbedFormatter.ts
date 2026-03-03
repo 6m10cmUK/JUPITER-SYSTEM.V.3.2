@@ -1,10 +1,11 @@
 import { EmbedBuilder, Message, ChatInputCommandInteraction } from 'discord.js';
 import { DiceRollResponse } from '../../application/dto/DiceRollDto';
+import { DiceRollViewModel } from '../viewmodels/DiceRollViewModel';
 import { generateEmbed } from '../discord/builders/embedGenerator';
 
 export class DiceEmbedFormatter {
     formatResponse(
-        response: DiceRollResponse, 
+        response: DiceRollResponse<DiceRollViewModel>,
         source: Message | ChatInputCommandInteraction
     ): EmbedBuilder {
         const resultTexts = response.rolls.map(roll => roll.result);

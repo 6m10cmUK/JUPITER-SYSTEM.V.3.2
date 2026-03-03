@@ -7,8 +7,8 @@ import {
     SlashCommandUserOption,
     SlashCommandBooleanOption
 } from 'discord.js';
-import { Command } from '../../interfaces/Command';
-import { TableCommandHandler } from './handlers/TableCommandHandler';
+import { Command } from '../../shared/interfaces/Command';
+import { createTableCommandHandler } from '../factories/CommandHandlerFactory';
 
 /**
  * テーブル管理統合コマンド
@@ -105,7 +105,7 @@ export const command: Command = {
 
     async execute(interaction: ChatInputCommandInteraction) {
         // TableCommandHandlerに処理を委譲（統一パターン）
-        const handler = new TableCommandHandler();
+        const handler = createTableCommandHandler();
         await handler.handle(interaction);
     }
 };

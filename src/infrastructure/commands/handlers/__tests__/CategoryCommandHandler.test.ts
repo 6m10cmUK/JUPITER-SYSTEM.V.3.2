@@ -1,11 +1,14 @@
 import { CategoryCommandHandler, CategoryError } from '../CategoryCommandHandler';
+import { CategoryManagementService } from '../../../../domain/services/CategoryManagementService';
+import { Guild } from 'discord.js';
 
 // 簡潔なテストに修正
 describe('CategoryCommandHandler', () => {
     let handler: CategoryCommandHandler;
 
     beforeEach(() => {
-        handler = new CategoryCommandHandler();
+        const mockFactory = (_guild: Guild) => ({} as CategoryManagementService);
+        handler = new CategoryCommandHandler(mockFactory);
     });
 
     test('ハンドラーが正常にインスタンス化される', () => {

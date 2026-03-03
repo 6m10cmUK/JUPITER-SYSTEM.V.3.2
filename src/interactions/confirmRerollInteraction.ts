@@ -1,13 +1,12 @@
 import { ButtonInteraction } from 'discord.js';
-import { SecondaryStats } from '../application/dto/StatusDto';
 import { generateEmbed } from '../presentation/discord/builders/embedGenerator';
-import { createErrorMessage } from '../presentation/discord/builders/messages';
+import { checkOwnerPermission } from '../shared/utils/interactionGuards';
 import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
-import { StatusServiceFactory } from '../domain/services/status/StatusServiceFactory';
-import { extractDiceExpression } from '../shared/utils/diceExpressionUtils';
+import { DiceExpressionParser } from '../domain/services/DiceExpressionParser';
 import { escapeDiscordMarkdown } from '../shared/utils/discordUtils';
+import { RerollStatusUseCase } from '../application/use-cases/status/RerollStatusUseCase';
 
 export const prefix = 'confirmReroll';
 
@@ -15,11 +14,7 @@ export async function execute(interaction: ButtonInteraction) {
     const [_, statType, rerollResult, details, messageId, rerollCount, userId] = interaction.customId.split(':');
 
     // 権限チェック
-    const user = await interaction.client.users.fetch(userId);
-    if (user.id !== interaction.user.id) {
-        await interaction.reply(createErrorMessage(interaction, `REROLL FAILED`, 'This command can only be used on your own character.'));
-        return;
-    }
+    if (!await checkOwnerPermission(interaction, userId, 'REROLL FAILED')) return;
 
     // エラーメッセージ用のヘルパー
     const errorMessage = (content: string) => interaction.reply({ content, ephemeral: true });
@@ -55,43 +50,27 @@ export async function execute(interaction: ButtonInteraction) {
     statusData.messageId = messageId;
     statusData.userId = userId;
 
-    // 古い値を保存
-    const oldValue = statusData.primaryStats[statType];
-
     // 現在の詳細からダイス式を抽出
     const currentDetails = statusData.primaryStatsDetails[statType];
-    const customDiceExpression = extractDiceExpression(currentDetails);
-    
-    // 新しい値で更新
-    statusData.primaryStats[statType] = Number(rerollResult);
-    
-    // カスタムダイス式がある場合は、詳細にダイス式を含める（エスケープ処理）
-    if (customDiceExpression) {
-        const escapedDiceExpression = escapeDiscordMarkdown(customDiceExpression);
-        const escapedDetails = escapeDiscordMarkdown(details);
-        statusData.primaryStatsDetails[statType] = `${escapedDiceExpression}: ${escapedDetails}`;
-    } else {
-        const escapedDetails = escapeDiscordMarkdown(details);
-        statusData.primaryStatsDetails[statType] = escapedDetails;
-    }
-    
-    statusData.rerollCount = Number(rerollCount); // 振り直し回数は既に増えているのでそのまま使用
+    const customDiceExpression = DiceExpressionParser.extractDiceExpression(currentDetails);
 
-    // 履歴を更新
-    if (statusData.history && statusData.history.length > 1) {
-        statusData.history += "\n";
-    }
-    
-    // カスタムダイス式が使用されている場合は、それも履歴に記録
-    if (customDiceExpression) {
-        statusData.history += `${statType}: ${oldValue} → ${rerollResult} ${details} [${customDiceExpression}]`;
-    } else {
-        statusData.history += `${statType}: ${oldValue} → ${rerollResult} ${details}`;
-    }
+    // エスケープ処理
+    const escapedDetails = escapeDiscordMarkdown(details);
+    const escapedDiceExpression = customDiceExpression ? escapeDiscordMarkdown(customDiceExpression) : null;
 
-    // 二次ステータスを再計算
-    const statusService = StatusServiceFactory.create(statusData.version);
-    statusData.secondaryStats = statusService.calculateSecondaryStats(statusData.primaryStats);
+    // RerollStatusUseCaseで振り直し確定処理を実行
+    const rerollUseCase = new RerollStatusUseCase();
+    const updatedData = rerollUseCase.confirmReroll(
+        statusData,
+        statType,
+        Number(rerollResult),
+        escapedDetails,
+        Number(rerollCount),
+        escapedDiceExpression,
+        details,
+        customDiceExpression
+    );
+    Object.assign(statusData, updatedData);
 
     // ステータス表示を更新
     const formatter = new StatusEmbedFormatter();

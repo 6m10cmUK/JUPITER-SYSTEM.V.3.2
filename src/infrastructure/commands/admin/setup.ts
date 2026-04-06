@@ -32,6 +32,7 @@ export async function execute(message: Message, guildId: string) {
             '-all: 全てのコマンドを登録\n' +
             '-pro: プログラムコマンドを登録\n' +
             '-standard: 標準コマンドを登録\n' +
+            '-lite: 最小限コマンドを登録 (status,job,roll,choice)\n' +
             '-help: ヘルプを表示\n' +
             '```');
         await message.reply(embed);
@@ -66,6 +67,15 @@ export async function execute(message: Message, guildId: string) {
             "roll",
             "status",
             "name"
+        ]
+    }
+
+    if (message.content.split(' ')[1] === '-lite' || message.content.split(' ')[1] === '-l') {
+        commandNames = [
+            "status",
+            "job",
+            "roll",
+            "choice"
         ]
     }
 

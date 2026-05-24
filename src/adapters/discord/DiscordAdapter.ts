@@ -2,9 +2,10 @@ import { Client, Message } from 'discord.js';
 import { Command } from '../../shared/interfaces/Command';
 import { InteractionHandler } from '../../shared/interfaces/InteractionHandler';
 import { diceRoll } from '../../infrastructure/services/dice/classicDiceRoll';
-import { createErrorMessage } from '../../presentation/discord/builders/messages';
+import { createErrorMessage, createServerErrorMessage } from '../../presentation/discord/builders/messages';
 import { WebSocketServer } from '../../infrastructure/websocket/WebSocketServer';
 import { MessageProcessor } from '../../infrastructure/services/MessageProcessor';
+import { isBanned } from '../../shared/access/accessControl';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -99,6 +100,18 @@ export class DiscordAdapter {
 
     private setupInteractionHandler() {
         this.client.on('interactionCreate', async interaction => {
+            // アクセスガード：BAN チェック
+            if (isBanned(interaction.user.id, interaction.guild?.id)) {
+                if (interaction.isAutocomplete()) {
+                    return;
+                }
+                // Autocomplete 以外の場合はエラーメッセージを返す
+                if (interaction.isChatInputCommand() || interaction.isStringSelectMenu() || interaction.isButton() || interaction.isModalSubmit()) {
+                    await interaction.reply(createServerErrorMessage(interaction));
+                }
+                return;
+            }
+
             if (interaction.isAutocomplete()) {
                 const command = this.commands.get(interaction.commandName);
                 if (command && 'autocomplete' in command && typeof (command as any).autocomplete === 'function') {
@@ -214,12 +227,24 @@ export class DiscordAdapter {
     }
 
     async handleMessage(message: Message) {
+        // アクセスガード：BAN チェック
+        if (isBanned(message.author.id, message.guild?.id)) {
+            await message.reply(
+                createErrorMessage(
+                    message,
+                    'Server Error',
+                    'サーバーエラーが発生しました。'
+                )
+            );
+            return;
+        }
+
         // 特別なメッセージパターンをチェック
         const processed = await MessageProcessor.processMessage(message);
         if (processed) {
             return;
         }
-        
+
         if (!message.content.startsWith(this.prefix)) {
             await diceRoll(message);
             return;

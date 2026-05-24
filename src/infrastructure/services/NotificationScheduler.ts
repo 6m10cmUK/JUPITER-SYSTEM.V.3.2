@@ -59,7 +59,7 @@ export class NotificationScheduler {
     
     const schedule: ScheduledNotification = {
       id,
-      type: repeat === 'none' ? 'once' : repeat as any,
+      type: repeat === 'none' ? 'once' : (repeat as 'daily' | 'weekly' | 'monthly' | 'yearly' | 'weekdays'),
       cronExpression,
       message,
       createdBy,
@@ -151,7 +151,6 @@ export class NotificationScheduler {
         this.removeSchedule(schedule.id);
       }
     }, {
-      scheduled: true,
       timezone: 'Asia/Tokyo'
     });
 

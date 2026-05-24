@@ -1,5 +1,5 @@
 import { generateEmbed } from './embedGenerator';
-import { Message, Interaction } from 'discord.js';
+import { Message, Interaction, MessageFlags } from 'discord.js';
 import * as packageJson from '../../../../package.json';
 function createEmbed(source: Message | Interaction, title: string, name: string, description: string) {
     return generateEmbed(source)
@@ -37,4 +37,14 @@ export function createInfoMessage(source: Message | Interaction, title: string, 
                 .setColor(0x0099ff)
         ]
     };
-} 
+}
+
+export function createServerErrorMessage(source: Message | Interaction) {
+    return {
+        embeds: [
+            createEmbed(source, `❌ ERROR`, `[JUPITER-SYSTEM ${packageJson.version}] Server Error`, 'サーバーエラーが発生しました。')
+                .setColor(0xff0000)
+        ],
+        flags: MessageFlags.Ephemeral as const,
+    };
+}

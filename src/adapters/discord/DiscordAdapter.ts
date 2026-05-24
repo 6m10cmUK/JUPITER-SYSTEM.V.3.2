@@ -228,14 +228,17 @@ export class DiscordAdapter {
 
     async handleMessage(message: Message) {
         // アクセスガード：BAN チェック
+        // コマンド試行時のみ通知し、通常会話・ダイス記法はサイレントブロックする
         if (isBanned(message.author.id, message.guild?.id)) {
-            await message.reply(
-                createErrorMessage(
-                    message,
-                    'Server Error',
-                    'サーバーエラーが発生しました。'
-                )
-            );
+            if (message.content.startsWith(this.prefix)) {
+                await message.reply(
+                    createErrorMessage(
+                        message,
+                        'Server Error',
+                        'サーバーエラーが発生しました。'
+                    )
+                );
+            }
             return;
         }
 

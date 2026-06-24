@@ -6,8 +6,8 @@ export abstract class BaseStatusService implements StatusVersion {
     abstract version: '6' | '7';
     abstract stats: string[];
     
-    protected abstract getStatFormula(statName: string): { count: number; sides: number; modifier: number };
-    protected abstract getMultiplier(): number;
+    abstract getStatFormula(statName: string): { count: number; sides: number; modifier: number };
+    abstract getMultiplier(): number;
     
     rollStat(statName: string): { total: number; rolls: number[] } {
         const formula = this.getStatFormula(statName);

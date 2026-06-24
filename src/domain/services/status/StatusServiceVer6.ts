@@ -5,11 +5,11 @@ export class StatusServiceVer6 extends BaseStatusService {
     version: '6' | '7' = '6';
     stats = ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU'];
     
-    protected getMultiplier(): number {
+    getMultiplier(): number {
         return 1; // Ver6は倍率なし
     }
-    
-    protected getStatFormula(statName: string): { count: number; sides: number; modifier: number } {
+
+    getStatFormula(statName: string): { count: number; sides: number; modifier: number } {
         switch (statName) {
             case 'SIZ':
             case 'INT':

@@ -5,17 +5,17 @@ export class StatusServiceVer7 extends BaseStatusService {
     version: '6' | '7' = '7';
     stats = ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC'];
     
-    protected getMultiplier(): number {
+    getMultiplier(): number {
         return 5; // Ver7は5倍
     }
-    
-    protected getStatFormula(statName: string): { count: number; sides: number; modifier: number } {
+
+    getStatFormula(statName: string): { count: number; sides: number; modifier: number } {
         switch (statName) {
             case 'SIZ':
             case 'INT':
-                return { count: 2, sides: 6, modifier: 6 };
             case 'EDU':
-                return { count: 3, sides: 6, modifier: 3 };
+                // 7版はEDUも (2d6+6)×5
+                return { count: 2, sides: 6, modifier: 6 };
             default:
                 return { count: 3, sides: 6, modifier: 0 };
         }

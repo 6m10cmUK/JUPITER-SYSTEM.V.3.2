@@ -5,11 +5,14 @@ import { diceRoll } from '../../infrastructure/services/dice/classicDiceRoll';
 import { createErrorMessage } from '../../presentation/discord/builders/messages';
 import { WebSocketServer } from '../../infrastructure/websocket/WebSocketServer';
 import { MessageProcessor } from '../../infrastructure/services/MessageProcessor';
+import { banService } from '../../infrastructure/services/BanService';
 
 import * as fs from 'fs';
 import * as path from 'path';
 
 export class DiscordAdapter {
+    /** bot運営者(OWNER_ID)のみが実行できるメッセージコマンド */
+    private static readonly OWNER_ONLY_COMMANDS = new Set(['ban', 'unban', 'bans']);
     private prefix = '/#';
     private commands: Map<string, Command> = new Map();
     private adminCommands: Map<string, (message: Message, guildId: string) => Promise<void>> = new Map();
@@ -99,6 +102,14 @@ export class DiscordAdapter {
 
     private setupInteractionHandler() {
         this.client.on('interactionCreate', async interaction => {
+            // BANチェック: 対象ユーザー/サーバーは全機能を無言でブロック（運営者は除外）
+            if (
+                interaction.user.id !== process.env.OWNER_ID &&
+                banService.isBlocked(interaction.user.id, interaction.guildId)
+            ) {
+                return;
+            }
+
             if (interaction.isAutocomplete()) {
                 const command = this.commands.get(interaction.commandName);
                 if (command && 'autocomplete' in command && typeof (command as any).autocomplete === 'function') {
@@ -214,6 +225,14 @@ export class DiscordAdapter {
     }
 
     async handleMessage(message: Message) {
+        // BANチェック: 対象ユーザー/サーバーは全機能を無言でブロック（運営者は除外）
+        if (
+            message.author.id !== process.env.OWNER_ID &&
+            banService.isBlocked(message.author.id, message.guild?.id)
+        ) {
+            return;
+        }
+
         // 特別なメッセージパターンをチェック
         const processed = await MessageProcessor.processMessage(message);
         if (processed) {
@@ -233,6 +252,14 @@ export class DiscordAdapter {
 
         const adminCommand = this.adminCommands.get(command);
         if (adminCommand) {
+            // BAN管理コマンドはbot運営者のみ。権限が無ければ無言で無視
+            if (DiscordAdapter.OWNER_ONLY_COMMANDS.has(command)) {
+                if (message.author.id !== process.env.OWNER_ID) {
+                    return;
+                }
+                await adminCommand(message, guildId);
+                return;
+            }
             // 管理者権限を持っているか確認
             if (!message.member?.permissions.has('Administrator') && message.guild?.ownerId !== message.author.id) {
                 await message.reply(

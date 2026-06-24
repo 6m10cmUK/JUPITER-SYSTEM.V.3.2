@@ -21,3 +21,5 @@ npm-debug.log*
 Thumbs.db 
 
 data/schedules.json
+# 実行時データ（BAN情報はサーバーごとに持つ）
+data/bans.json

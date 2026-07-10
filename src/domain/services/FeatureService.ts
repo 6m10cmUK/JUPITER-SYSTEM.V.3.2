@@ -9,6 +9,7 @@ import {
     FeatureGenerationError 
 } from '../../application/dto/FeatureDto';
 import { configurationStore } from '../../infrastructure/services/ConfigurationStore';
+import { getDataDir } from '../../shared/utils/dataPath';
 
 /**
  * 特徴生成のドメインサービス
@@ -27,7 +28,7 @@ export class FeatureService {
         }
 
         try {
-            const dataPath = path.join(process.cwd(), 'src', 'data', 'features.json');
+            const dataPath = path.join(getDataDir(), 'features.json');
             const rawData = fs.readFileSync(dataPath, 'utf8');
             const parsedData = JSON.parse(rawData);
 

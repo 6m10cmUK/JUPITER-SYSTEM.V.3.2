@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { NinpoData, NinpoSearchCriteria } from '../../application/dto/NinpoDto';
+import { getDataDir } from '../../shared/utils/dataPath';
 
 interface NinpoFile {
     name: string;
@@ -16,7 +17,7 @@ export class NinpoService {
     }
 
     private loadNinpoData(): void {
-        const ninpoDir = path.join(process.cwd(), 'src', 'data', 'shinobigami', 'ninpo');
+        const ninpoDir = path.join(getDataDir(), 'shinobigami', 'ninpo');
         
         try {
             const files = fs.readdirSync(ninpoDir).filter(file => file.endsWith('.json'));

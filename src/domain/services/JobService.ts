@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { JobData, JobSearchCriteria } from '../../application/dto/JobDto';
+import { getDataDir } from '../../shared/utils/dataPath';
 
 export class JobService {
     private jobData: JobData[] = [];
@@ -10,7 +11,7 @@ export class JobService {
     }
 
     private loadJobData(): void {
-        const dataPath = path.join(process.cwd(), 'src', 'data', 'jobs.json');
+        const dataPath = path.join(getDataDir(), 'jobs.json');
         this.jobData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
     }
 

@@ -8,12 +8,13 @@ import {
 import { Command } from '../../shared/interfaces/Command';
 import { NinpoSearchCriteria } from '../../application/dto/NinpoDto';
 import { createNinpoCommandHandler } from '../factories/CommandHandlerFactory';
+import { getDataDir } from '../../shared/utils/dataPath';
 import fs from 'fs';
 import path from 'path';
 
 // 忍法データディレクトリから動的にカテゴリーを取得
 function getNinpoCategories(): { name: string; value: string }[] {
-    const ninpoDir = path.join(process.cwd(), 'src', 'data', 'shinobigami', 'ninpo');
+    const ninpoDir = path.join(getDataDir(), 'shinobigami', 'ninpo');
     const categories: { name: string; value: string }[] = [];
     
     try {

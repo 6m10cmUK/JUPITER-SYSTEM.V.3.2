@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction } from 'discord.js';
 import { generateEmbed } from '../../../presentation/discord/builders/embedGenerator';
 import { rollDice } from '../../../domain/utils/dice';
+import { getDataDir } from '../../../shared/utils/dataPath';
 import fs from 'fs';
 import path from 'path';
 
@@ -64,7 +65,7 @@ export class NameCommandHandler {
      * 名前データを型安全に読み込み
      */
     private async loadNameData(): Promise<any> {
-        const dataPath = path.join(process.cwd(), 'src', 'data', 'names.json');
+        const dataPath = path.join(getDataDir(), 'names.json');
         const rawData = fs.readFileSync(dataPath, 'utf8');
         return JSON.parse(rawData);
     }

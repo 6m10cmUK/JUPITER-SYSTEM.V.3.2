@@ -9,6 +9,7 @@ import {
     NinpoAvailableCategory,
     NinpoDisplayData
 } from '../../../application/dto/NinpoDto';
+import { getDataDir } from '../../../shared/utils/dataPath';
 import fs from 'fs';
 import path from 'path';
 
@@ -164,7 +165,7 @@ export class NinpoCommandHandler {
      * @returns 利用可能なカテゴリー情報
      */
     static getNinpoCategories(): NinpoAvailableCategory[] {
-        const ninpoDir = path.join(process.cwd(), 'src', 'data', 'shinobigami', 'ninpo');
+        const ninpoDir = path.join(getDataDir(), 'shinobigami', 'ninpo');
         const categories: NinpoAvailableCategory[] = [];
 
         const knownCategories: NinpoCategory[] = [

@@ -1,5 +1,6 @@
 import { Message } from 'discord.js';
 import { createInfoMessage } from '../../../presentation/discord/builders/messages';
+import { logMessageCommand } from '../../../shared/utils/UsageLogger';
 import { banService } from '../../services/BanService';
 
 export async function execute(message: Message, _guildId: string) {
@@ -12,6 +13,7 @@ export async function execute(message: Message, _guildId: string) {
     const userList = users.length ? users.map(fmt).join('\n') : 'なし';
     const serverList = servers.length ? servers.map(fmt).join('\n') : 'なし';
 
+    logMessageCommand(message, 'bans', `status=success users=${users.length} servers=${servers.length}`);
     await message.reply(
         createInfoMessage(message, 'BAN LIST', `**ユーザー (${users.length})**\n${userList}\n\n**サーバー (${servers.length})**\n${serverList}`)
     );

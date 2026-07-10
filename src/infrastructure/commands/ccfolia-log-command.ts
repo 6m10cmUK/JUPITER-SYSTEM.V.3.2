@@ -6,6 +6,8 @@ import {
 } from 'discord.js';
 import { Command } from '../../shared/interfaces/Command';
 import axios from 'axios';
+import { createErrorMessage } from '../../presentation/discord/builders/messages';
+import { logError, logResult } from '../../shared/utils/UsageLogger';
 
 
 export const command: Command = {
@@ -18,7 +20,8 @@ export const command: Command = {
                 .setRequired(true)
         ) as SlashCommandBuilder,
         
-        async execute(interaction: ChatInputCommandInteraction) {
+    async execute(interaction: ChatInputCommandInteraction) {
+        try {
             await interaction.deferReply();
 
             const attachment = interaction.options.getAttachment('logfile');
@@ -27,12 +30,12 @@ export const command: Command = {
                 return;
             }
 
-            const response = await axios.get(attachment.url);
+            const response = await axios.get<string>(attachment.url);
             const htmlContent = response.data;
                 
             const regex = /<p style="color:((?!#888888)[^;]+);">\s*<span>\s*\[([^\]]+)\]<\/span>\s*<span>([^<]+)<\/span>\s*:\s*<span>\s*([^<]+)\s*<\/span>\s*<\/p>/g;
         
-            let match;
+            let match: RegExpExecArray | null;
             const result: { name: string, color: string, critical: string[], special: string[], fumble: string[] }[] = [];
             while ((match = regex.exec(htmlContent)) !== null) {
 
@@ -118,15 +121,42 @@ export const command: Command = {
                 });
             });
 
-            const chunkedEmbeds = [];
+            const chunkedEmbeds: EmbedBuilder[][] = [];
             for (let i = 0; i < embeds.length; i += 10) {
                 chunkedEmbeds.push(embeds.slice(i, i + 10));
             }
 
-            for (const embedChunk of chunkedEmbeds) {
-                await interaction.followUp({ embeds: embedChunk });
+            if (chunkedEmbeds.length === 0) {
+                await interaction.editReply({ content: '該当するログは見つかりませんでした。' });
+            } else {
+                for (const embedChunk of chunkedEmbeds) {
+                    await interaction.followUp({ embeds: embedChunk });
+                }
             }
 
+            const messageCount = filteredResult.reduce(
+                (total, item) => total + item.critical.length + item.special.length + item.fumble.length,
+                0
+            );
+            logResult(
+                interaction,
+                `status=success messages=${messageCount} characters=${filteredResult.length} embeds=${embeds.length}`
+            );
+        } catch (error) {
+            logError(interaction, error, '/ccfolia-log');
+
+            const errorReply = createErrorMessage(
+                interaction,
+                'CCFOLIA LOG FAILED',
+                'CCFOLIAログの処理中にエラーが発生しました。'
+            );
+
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply(errorReply);
+            } else {
+                await interaction.reply(errorReply);
+            }
+        }
     }
 
 }

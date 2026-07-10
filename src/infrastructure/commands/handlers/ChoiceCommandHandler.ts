@@ -2,6 +2,7 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { generateEmbed } from '../../../presentation/discord/builders/embedGenerator';
 import { ChoiceValidator, ChoiceValidationError } from '../../../domain/validators/ChoiceValidator';
 import { rollDice } from '../../../domain/utils/dice';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 /**
  * Choice選択結果の型定義
@@ -55,9 +56,9 @@ export class ChoiceCommandHandler {
 
             await interaction.reply({ embeds: [embed] });
 
-            // ログ出力
-            console.log(
-                `${interaction.guildId} ${interaction.user.username} choice(${args}) ＞ **${choiceResult.selectedOption}**`
+            logResult(
+                interaction,
+                `status=success input=${choiceResult.originalInput} selected=${choiceResult.selectedOption} index=${choiceResult.selectedIndex + 1}/${choiceResult.totalOptions}`
             );
 
         } catch (error) {

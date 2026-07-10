@@ -3,6 +3,7 @@ import { NinpoEmbedFormatter } from '../presentation/formatters/NinpoEmbedFormat
 import { NinpoComponentBuilder, resolveQueryKey, resolveCategoryKey } from '../presentation/discord/builders/NinpoComponentBuilder';
 import { NinpoCommandHandler } from '../infrastructure/commands/handlers/NinpoCommandHandler';
 import { NinpoSearchCriteria } from '../application/dto/NinpoDto';
+import { logResult } from '../shared/utils/UsageLogger';
 
 export const prefix = 'ninpo';
 
@@ -15,14 +16,14 @@ export async function execute(interaction: ButtonInteraction) {
     if (parts.length === 7) {
         const [_, type, query, searchType, category, page, ninpoCategory] = parts;
         if (!type || !searchType || !category || !page) {
-            console.error('Invalid customId format:', interaction.customId);
+            logResult(interaction, `status=failed cause=invalid-custom-id customId=${interaction.customId}`);
             return;
         }
 
         const resolvedQuery = resolveQueryKey(query);
         const resolvedCategory = resolveCategoryKey(ninpoCategory);
         if (resolvedQuery === null) {
-            console.error('Failed to resolve query key:', query);
+            logResult(interaction, `status=failed cause=query-key-not-found key=${query}`);
             return;
         }
 
@@ -37,13 +38,13 @@ export async function execute(interaction: ButtonInteraction) {
         // 古い形式（互換性のため）
         const [_, type, query, searchType, category, page] = parts;
         if (!type || !searchType || !category || !page) {
-            console.error('Invalid customId format:', interaction.customId);
+            logResult(interaction, `status=failed cause=invalid-custom-id customId=${interaction.customId}`);
             return;
         }
 
         const resolvedQuery2 = resolveQueryKey(query);
         if (resolvedQuery2 === null) {
-            console.error('Failed to resolve query key:', query);
+            logResult(interaction, `status=failed cause=query-key-not-found key=${query}`);
             return;
         }
 
@@ -54,7 +55,7 @@ export async function execute(interaction: ButtonInteraction) {
             page: Number(page)
         };
     } else {
-        console.error('Invalid customId format length:', interaction.customId);
+        logResult(interaction, `status=failed cause=invalid-custom-id customId=${interaction.customId}`);
         return;
     }
 
@@ -65,4 +66,8 @@ export async function execute(interaction: ButtonInteraction) {
     const components = NinpoComponentBuilder.createComponents(criteria, displayData);
 
     await interaction.update({ embeds: [embed], components });
+    logResult(
+        interaction,
+        `status=success action=${parts[1] ?? '-'} searchType=${criteria.searchType} category=${criteria.category} page=${displayData.currentPage}/${displayData.maxPage} displayed=${displayData.ninpos.length}`
+    );
 }

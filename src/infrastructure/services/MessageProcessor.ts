@@ -1,4 +1,5 @@
 import { Message } from 'discord.js';
+import { logSystem } from '../../shared/utils/UsageLogger';
 import { configurationStore } from './ConfigurationStore';
 
 export class MessageProcessor {
@@ -23,8 +24,8 @@ export class MessageProcessor {
         // メッセージを削除（可能な場合）
         try {
             await message.delete();
-        } catch (error) {
-            // 削除に失敗した場合は無視
+        } catch (error: unknown) {
+            logSystem('message-processor', `メッセージ削除失敗: ${error instanceof Error ? error.message : String(error)}`);
         }
         
         return true;

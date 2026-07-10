@@ -1,3 +1,5 @@
+import { logSystem } from '../../shared/utils/UsageLogger';
+
 export interface Holiday {
   date: Date;
   name: string;
@@ -45,6 +47,7 @@ export class HolidayService {
       return holidays;
     } catch (error) {
       console.error(`Failed to fetch holidays for year ${year}:`, error);
+      logSystem('holiday', 'API取得失敗、デフォルト祝日データで継続');
       return this.getDefaultHolidays(year);
     }
   }

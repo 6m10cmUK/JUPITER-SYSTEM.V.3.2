@@ -1,5 +1,26 @@
 import { ChatInputCommandInteraction, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { generateEmbed } from '../../../presentation/discord/builders/embedGenerator';
+import { logResult } from '../../../shared/utils/UsageLogger';
+
+const R6S_ATTACKERS = [
+    'SLEDGE', 'THATCHER', 'ASH', 'THERMITE', 'TWITCH', 'MONTAGNE', 'GLAZ', 'FUZE', 'BLITZ', 'IQ',
+    'BUCK', 'BLACKBEARD', 'CAPITÃO', 'HIBANA', 'JACKAL', 'YING', 'ZOFIA', 'DOKKAEBI', 'LION', 'FINKA',
+    'MAVERICK', 'NOMAD', 'GRIDLOCK', 'NØKK', 'AMARU', 'KALI', 'IANA', 'ACE', 'ZERO', 'FLORES',
+    'OSA', 'SENS', 'GRIM', 'BRAVA', 'RAM', 'DEIMOS', 'STRIKER', 'RAUORA'
+] as const;
+
+const R6S_DEFENDERS = [
+    'SMOKE', 'MUTE', 'CASTLE', 'PULSE', 'DOC', 'ROOK', 'KAPKAN', 'TACHANKA', 'JÄGER', 'BANDIT',
+    'FROST', 'VALKYRIE', 'CAVEIRA', 'ECHO', 'MIRA', 'LESION', 'ELA', 'VIGIL', 'MAESTRO', 'ALIBI',
+    'CLASH', 'KAID', 'MOZZIE', 'WARDEN', 'GOYO', 'WAMAI', 'ORYX', 'MELUSI', 'ARUNI', 'THUNDERBIRD',
+    'THORN', 'AZAMI', 'SOLIS', 'FENRIR', 'TUBARÃO', 'SKOPOS', 'SENTRY'
+] as const;
+
+interface R6SSelection {
+    readonly index: number;
+    readonly attacker: string;
+    readonly defender: string;
+}
 
 /**
  * シンプルなコマンド用の汎用ハンドラー
@@ -12,12 +33,27 @@ export class SimpleCommandHandler {
      */
     async handleR6S(interaction: ChatInputCommandInteraction): Promise<void> {
         try {
+            const rawCount = interaction.options.getInteger('count') ?? 1;
+            const count = Math.min(Math.max(rawCount, 1), 5);
+            const selections = Array.from({ length: count }, (_, index): R6SSelection => ({
+                index: index + 1,
+                attacker: this.pickRandom(R6S_ATTACKERS),
+                defender: this.pickRandom(R6S_DEFENDERS)
+            }));
+            const selectionText = selections
+                .map(selection => `**${selection.index}.** 攻撃: ${selection.attacker} / 防衛: ${selection.defender}`)
+                .join('\n');
+
             const embed = generateEmbed(interaction)
                 .setTitle('Rainbow Six Siege')
-                .setDescription('R6S関連機能（実装準備中）')
+                .setDescription(selectionText)
                 .setColor(0x333333);
 
             await interaction.reply({ embeds: [embed] });
+            logResult(
+                interaction,
+                `status=success command=r6s count=${selections.length} selections=${selections.map(selection => `${selection.index}:attacker=${selection.attacker}/defender=${selection.defender}`).join(',')}`
+            );
         } catch (error) {
             await this.handleError(interaction, error, 'r6s');
         }
@@ -59,7 +95,7 @@ export class SimpleCommandHandler {
             }
 
             const channelNames = targetChannels.map(ch => ch.name);
-            console.log(`ボイスチャンネル削除開始: ${channelNames.join(', ')} (${targetChannels.size}個)`);
+            logResult(interaction, `status=started command=test action=delete-voice channels=${channelNames.join(',')} count=${targetChannels.size}`);
 
             // 並列削除実行
             const deletionPromises = targetChannels.map(channel => channel.delete('テストコマンドによる自動削除'));
@@ -78,15 +114,7 @@ export class SimpleCommandHandler {
 
             await interaction.editReply({ embeds: [embed] });
 
-            // 削除ログ
-            console.log(`ボイスチャンネル削除完了:`, {
-                deletedChannels: channelNames,
-                count: targetChannels.size,
-                executor: interaction.user.username,
-                executorId: interaction.user.id,
-                guildId: interaction.guild.id,
-                timestamp: new Date().toISOString()
-            });
+            logResult(interaction, `status=success command=test action=delete-voice channels=${channelNames.join(',')} count=${targetChannels.size}`);
 
         } catch (error) {
             await this.handleError(interaction, error, 'test');
@@ -144,5 +172,9 @@ export class SimpleCommandHandler {
             guildId: interaction.guildId ?? 'DM',
             command: commandName
         });
+    }
+
+    private pickRandom<T>(items: readonly T[]): T {
+        return items[Math.floor(Math.random() * items.length)];
     }
 }

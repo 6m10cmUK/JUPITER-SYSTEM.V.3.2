@@ -4,6 +4,7 @@ import {
     ButtonBuilder,
     ButtonStyle
 } from 'discord.js';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 /**
  * Wordleゲームコマンドハンドラー（統一アーキテクチャ）
@@ -36,8 +37,7 @@ export class WordleCommandHandler {
                 components: [row]
             });
 
-            // 成功ログ
-            console.log(`Wordle game initiated by ${interaction.user.username} in ${interaction.guildId}`);
+            logResult(interaction, 'status=success action=prompt-start');
 
         } catch (error) {
             const errorMessage = 'Wordleゲームの開始中にエラーが発生しました。';

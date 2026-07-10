@@ -5,6 +5,9 @@ import {
     FeatureGenerationRequest, 
     FeatureGenerationError 
 } from '../../../application/dto/FeatureDto';
+import { logResult } from '../../../shared/utils/UsageLogger';
+
+const RESULT_DETAIL_LIMIT = 300;
 
 /**
  * 特徴生成コマンドハンドラー（型安全性強化版）
@@ -52,6 +55,14 @@ export class FeatureCommandHandler {
             }
 
             await interaction.reply({ embeds: [embed] });
+            logResult(
+                interaction,
+                truncateResultDetail(
+                    `status=success count=${result.features.length} predefined=${result.usedPredefinedValues} features=${result.features
+                        .map(generatedFeature => `${generatedFeature.diceIndex}-${generatedFeature.detailNumber}:${generatedFeature.feature.name}`)
+                        .join(',')}`
+                )
+            );
 
         } catch (error) {
             // ユーザーフレンドリーなエラーメッセージ
@@ -85,4 +96,12 @@ export class FeatureCommandHandler {
             });
         }
     }
+}
+
+function truncateResultDetail(detail: string): string {
+    if (detail.length <= RESULT_DETAIL_LIMIT) {
+        return detail;
+    }
+
+    return `${detail.slice(0, RESULT_DETAIL_LIMIT - 3)}...`;
 }

@@ -7,6 +7,7 @@ import {
   ActionRowBuilder
 } from 'discord.js';
 import { activeGames } from './wordleStart';
+import { logResult } from '../shared/utils/UsageLogger';
 
 export const prefix = 'wordle:continue';
 
@@ -21,6 +22,7 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
       content: 'ゲームが見つかりません。新しくゲームを開始してください。', 
       ephemeral: true 
     });
+    logResult(interaction, `status=failed action=continue gameKey=${gameKey} cause=game-not-found`);
     return;
   }
 
@@ -46,4 +48,5 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
   modal.addComponents(row);
 
   await interaction.showModal(modal);
+  logResult(interaction, `status=success action=continue gameKey=${gameKey} nextGuess=${game.getGuessCount() + 1}`);
 }

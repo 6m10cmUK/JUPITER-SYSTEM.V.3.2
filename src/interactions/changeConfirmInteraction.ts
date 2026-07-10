@@ -5,11 +5,11 @@ import { StatusEmbedParser } from '../presentation/parsers/StatusEmbedParser';
 import { StatusEmbedFormatter } from '../presentation/formatters/StatusEmbedFormatter';
 import { StatusComponentBuilder } from '../presentation/discord/builders/StatusComponentBuilder';
 import { SwapStatsUseCase } from '../application/use-cases/status/SwapStatsUseCase';
+import { logResult } from '../shared/utils/UsageLogger';
 
 export const prefix = 'changeConfirm';
 
 export async function execute(interaction: ButtonInteraction) {
-    console.log(interaction.customId);
     const [_, beforeStat, afterStat, messageId, userId] = interaction.customId.split(':');
 
     // 権限チェック
@@ -69,4 +69,8 @@ export async function execute(interaction: ButtonInteraction) {
         .setTitle(`~~${beforeStatUpper} ⇄ ${afterStatUpper}~~`);
     
     await interaction.update({ embeds: [rerollEmbed], components: [] });
+    logResult(
+        interaction,
+        `status=success action=change-confirm before=${beforeStatUpper} after=${afterStatUpper} messageId=${messageId}`
+    );
 }

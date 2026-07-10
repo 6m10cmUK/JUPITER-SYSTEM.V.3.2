@@ -9,6 +9,7 @@ import {
 } from 'discord.js';
 import { WordleService } from '../domain/services/WordleService';
 import { activeGames } from '../interactions/wordleStart';
+import { logResult } from '../shared/utils/UsageLogger';
 
 // Modal submission handler - not an InteractionHandler
 export async function handleWordleGuessModal(interaction: ModalSubmitInteraction) {
@@ -20,6 +21,7 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
         content: 'ゲームが見つかりません。新しくゲームを開始してください。', 
         ephemeral: true 
       });
+      logResult(interaction, `status=failed action=guess gameKey=${gameKey} cause=game-not-found`);
       return;
     }
 
@@ -31,6 +33,7 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
         content: '4文字のひらがなを入力してください！', 
         ephemeral: true 
       });
+      logResult(interaction, `status=failed action=guess gameKey=${gameKey} cause=invalid-guess length=${guess.length}`);
       return;
     }
 
@@ -64,6 +67,10 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
       };
 
       await interaction.reply({ embeds: [embed] });
+      logResult(
+        interaction,
+        `status=success action=guess gameKey=${gameKey} result=${game.isWon ? 'won' : 'lost'} guesses=${game.getGuessCount()} answer=${game.answer}`
+      );
     } else {
       // ゲーム継続 - 結果とボタンを表示
       const historyDisplay = game.getGuessHistory();
@@ -94,5 +101,9 @@ export async function handleWordleGuessModal(interaction: ModalSubmitInteraction
         }],
         components: [row]
       });
+      logResult(
+        interaction,
+        `status=success action=guess gameKey=${gameKey} result=continue guesses=${game.getGuessCount()}`
+      );
     }
 }

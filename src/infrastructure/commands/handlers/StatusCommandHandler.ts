@@ -6,6 +6,9 @@ import { StatusViewModel } from '../../../presentation/viewmodels/StatusViewMode
 import { StatusComponentBuilder } from '../../../presentation/discord/builders/StatusComponentBuilder';
 import { CommandHandler, ValidationError } from '../../../shared/interfaces/patterns/CommandPatterns';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
+import { logResult } from '../../../shared/utils/UsageLogger';
+
+const RESULT_DETAIL_LIMIT = 300;
 
 export class StatusCommandHandler implements CommandHandler {
     constructor(
@@ -80,6 +83,7 @@ export class StatusCommandHandler implements CommandHandler {
         const components = StatusComponentBuilder.createComponents(statusViewModel, messageId, interaction.user.id);
 
         await interaction.editReply({ embeds: [embed], components });
+        logResult(interaction, truncateResultDetail(formatStatusResultDetail(statusResult)));
     }
     
     /**
@@ -101,4 +105,25 @@ export class StatusCommandHandler implements CommandHandler {
             messageId: '' // 後で設定
         });
     }
+}
+
+function formatStatusResultDetail(statusResult: StatusResultDto): string {
+    const primaryStatOrder = statusResult.version === '7'
+        ? ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU', 'LUC']
+        : ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU'];
+    const primaryStats = primaryStatOrder
+        .filter(stat => statusResult.primaryStats[stat] != null)
+        .map(stat => `${stat}=${statusResult.primaryStats[stat]}`)
+        .join(' ');
+    const { HP, MP, SAN, DB } = statusResult.secondaryStats;
+
+    return `status=success version=${statusResult.version} name=${statusResult.characterName} ${primaryStats} HP=${HP} MP=${MP} SAN=${SAN} DB=${DB}`;
+}
+
+function truncateResultDetail(detail: string): string {
+    if (detail.length <= RESULT_DETAIL_LIMIT) {
+        return detail;
+    }
+
+    return `${detail.slice(0, RESULT_DETAIL_LIMIT - 3)}...`;
 }

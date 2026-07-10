@@ -1,6 +1,9 @@
 import { ChatInputCommandInteraction } from 'discord.js';
 import { JobEmbedFormatter } from '../../../presentation/formatters/JobEmbedFormatter';
 import { JobSearchCriteria } from '../../../application/dto/JobDto';
+import { logResult } from '../../../shared/utils/UsageLogger';
+
+const RESULT_DETAIL_LIMIT = 300;
 
 /**
  * 職業検索コマンドハンドラー
@@ -55,6 +58,10 @@ export class JobCommandHandler {
         
         const display = await this.formatter.format(interaction, criteria);
         await interaction.editReply(display);
+        logResult(
+            interaction,
+            truncateResultDetail(formatJobResultDetail(criteria, display.embeds[0]?.data.fields?.map(field => field.name) ?? []))
+        );
     }
 
     /**
@@ -75,5 +82,25 @@ export class JobCommandHandler {
         
         const display = await this.formatter.format(interaction, criteria);
         await interaction.editReply(display);
+        logResult(
+            interaction,
+            truncateResultDetail(formatJobResultDetail(criteria, display.embeds[0]?.data.fields?.map(field => field.name) ?? []))
+        );
     }
+}
+
+function formatJobResultDetail(criteria: JobSearchCriteria, jobNames: string[]): string {
+    const query = criteria.query ? ` query=${criteria.query}` : '';
+    const count = criteria.count != null ? ` count=${criteria.count}` : '';
+    const representative = jobNames[0] ?? '-';
+
+    return `status=success subcommand=${criteria.subcommand}${query}${count} page=${criteria.page} displayed=${jobNames.length} representative=${representative}`;
+}
+
+function truncateResultDetail(detail: string): string {
+    if (detail.length <= RESULT_DETAIL_LIMIT) {
+        return detail;
+    }
+
+    return `${detail.slice(0, RESULT_DETAIL_LIMIT - 3)}...`;
 }

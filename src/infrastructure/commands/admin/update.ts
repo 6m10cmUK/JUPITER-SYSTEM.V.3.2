@@ -7,6 +7,19 @@ dotenv.config();
 import * as fs from 'fs';
 import * as path from 'path';
 
+type CommandData = {
+    toJSON: () => APIApplicationCommand;
+};
+
+type LoadableCommandModule = {
+    command?: {
+        data?: CommandData;
+    };
+    createNotifyCommand?: () => {
+        data: CommandData;
+    };
+};
+
 export async function execute(message: Message, guildId: string) {
     const commands: APIApplicationCommand[] = [];
     const commandsPath = path.join(process.cwd(), 'src/infrastructure/commands');
@@ -14,8 +27,17 @@ export async function execute(message: Message, guildId: string) {
     const filteredCommandFiles = commandFiles.filter(file => !file.startsWith('classicCommands/'));
 
     for (const file of filteredCommandFiles) {
-        const { command } = await import(path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js')));
-        commands.push(command.data.toJSON());
+        try {
+            const module = await import(path.join(process.cwd(), 'dist/infrastructure/commands', file.replace('.ts', '.js'))) as LoadableCommandModule;
+            if (module.command?.data) {
+                commands.push(module.command.data.toJSON());
+            } else if (module.createNotifyCommand && file === 'notify-command.ts') {
+                const notifyCommand = module.createNotifyCommand();
+                commands.push(notifyCommand.data.toJSON());
+            }
+        } catch (error) {
+            console.error(`Failed to load command ${file}:`, error);
+        }
     }
 
     const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
@@ -42,4 +64,3 @@ export async function execute(message: Message, guildId: string) {
         await message.reply(embed);
     }
 }
-

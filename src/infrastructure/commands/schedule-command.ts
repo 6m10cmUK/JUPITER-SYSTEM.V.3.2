@@ -15,10 +15,23 @@ import {
   AutocompleteInteraction
 } from 'discord.js';
 import { NotificationScheduler } from '../services/NotificationScheduler';
+import type { WebSocketServer } from '../websocket/WebSocketServer';
 import { Command } from './types';
 import { generateEmbed } from '../../presentation/discord/builders/embedGenerator';
+import { createErrorMessage } from '../../presentation/discord/builders/messages';
+import { logError } from '../../shared/utils/UsageLogger';
 
 let scheduler: NotificationScheduler | null = null;
+
+type ScheduleCommandGlobals = typeof globalThis & {
+  scheduler?: NotificationScheduler;
+  webSocketServer: WebSocketServer;
+};
+
+function getGlobalScheduler(): NotificationScheduler {
+  const commandGlobals = globalThis as ScheduleCommandGlobals;
+  return commandGlobals.scheduler || new NotificationScheduler(commandGlobals.webSocketServer);
+}
 
 export const command: Command = {
   data: new SlashCommandBuilder()
@@ -86,7 +99,7 @@ export const command: Command = {
 
   async autocomplete(interaction: AutocompleteInteraction) {
     if (!scheduler) {
-      scheduler = (global as any).scheduler || new NotificationScheduler((global as any).webSocketServer);
+      scheduler = getGlobalScheduler();
     }
     
     const focusedOption = interaction.options.getFocused(true);
@@ -132,7 +145,7 @@ export const command: Command = {
     if (!interaction.isChatInputCommand()) return;
     
     if (!scheduler) {
-      scheduler = (global as any).scheduler || new NotificationScheduler((global as any).webSocketServer);
+      scheduler = getGlobalScheduler();
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -242,6 +255,8 @@ export const command: Command = {
             ephemeral: true
           });
         } catch (error) {
+          logError(interaction, error, '/schedule add');
+
           const errorEmbed = generateEmbed(interaction)
             .setTitle('❌ エラーが発生しました')
             .setDescription(error instanceof Error ? error.message : String(error));
@@ -255,31 +270,40 @@ export const command: Command = {
       }
 
       case 'list': {
-        const schedules = scheduler.listSchedules();
-        if (schedules.length === 0) {
-          const embed = generateEmbed(interaction)
-            .setTitle('📅 スケジュール一覧')
-            .setDescription('スケジュールされた通知はありません');
-          
-          await interaction.reply({
-            embeds: [embed],
-            ephemeral: true
-          });
-        } else {
-          const embed = generateEmbed(interaction)
-            .setTitle('📅 スケジュール一覧')
-            .setDescription(`現在 ${schedules.length} 件のスケジュールが登録されています`);
-          
-          schedules.forEach(s => {
-            embed.addFields({
-              name: `ID: ${s.id} - ${s.timeString}`,
-              value: `メッセージ: ${s.message}\n作成者: ${s.createdBy}`,
-              inline: false
+        try {
+          const schedules = scheduler.listSchedules();
+          if (schedules.length === 0) {
+            const embed = generateEmbed(interaction)
+              .setTitle('📅 スケジュール一覧')
+              .setDescription('スケジュールされた通知はありません');
+            
+            await interaction.reply({
+              embeds: [embed],
+              ephemeral: true
             });
-          });
-          
+          } else {
+            const embed = generateEmbed(interaction)
+              .setTitle('📅 スケジュール一覧')
+              .setDescription(`現在 ${schedules.length} 件のスケジュールが登録されています`);
+            
+            schedules.forEach(s => {
+              embed.addFields({
+                name: `ID: ${s.id} - ${s.timeString}`,
+                value: `メッセージ: ${s.message}\n作成者: ${s.createdBy}`,
+                inline: false
+              });
+            });
+            
+            await interaction.reply({
+              embeds: [embed],
+              ephemeral: true
+            });
+          }
+        } catch (error) {
+          logError(interaction, error, '/schedule list');
+
           await interaction.reply({
-            embeds: [embed],
+            ...createErrorMessage(interaction, 'SCHEDULE LIST FAILED', 'スケジュール一覧の取得に失敗しました'),
             ephemeral: true
           });
         }
@@ -287,25 +311,34 @@ export const command: Command = {
       }
 
       case 'remove': {
-        const id = interaction.options.getString('id', true);
-        const removed = scheduler.removeSchedule(id);
-        
-        if (removed) {
-          const embed = generateEmbed(interaction)
-            .setTitle('✅ スケジュール削除完了')
-            .setDescription(`スケジュール (ID: ${id}) を削除しました`);
+        try {
+          const id = interaction.options.getString('id', true);
+          const removed = scheduler.removeSchedule(id);
           
+          if (removed) {
+            const embed = generateEmbed(interaction)
+              .setTitle('✅ スケジュール削除完了')
+              .setDescription(`スケジュール (ID: ${id}) を削除しました`);
+            
+            await interaction.reply({
+              embeds: [embed],
+              ephemeral: true
+            });
+          } else {
+            const embed = generateEmbed(interaction)
+              .setTitle('❌ エラー')
+              .setDescription(`スケジュール (ID: ${id}) が見つかりません`);
+            
+            await interaction.reply({
+              embeds: [embed],
+              ephemeral: true
+            });
+          }
+        } catch (error) {
+          logError(interaction, error, '/schedule remove');
+
           await interaction.reply({
-            embeds: [embed],
-            ephemeral: true
-          });
-        } else {
-          const embed = generateEmbed(interaction)
-            .setTitle('❌ エラー')
-            .setDescription(`スケジュール (ID: ${id}) が見つかりません`);
-          
-          await interaction.reply({
-            embeds: [embed],
+            ...createErrorMessage(interaction, 'SCHEDULE REMOVE FAILED', 'スケジュールの削除に失敗しました'),
             ephemeral: true
           });
         }

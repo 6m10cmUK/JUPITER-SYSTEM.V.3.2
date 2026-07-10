@@ -5,6 +5,7 @@ import {
 } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../presentation/discord/builders/messages';
 import { CategoryManagementService } from '../domain/services/CategoryManagementService';
+import { logResult } from '../shared/utils/UsageLogger';
 
 export const prefix = 'table_delete';
 
@@ -14,6 +15,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
             content: '❌ このコマンドはサーバー内でのみ使用できます',
             ephemeral: true
         });
+        logResult(interaction, 'status=failed action=unknown cause=no-guild');
         return;
     }
 
@@ -27,6 +29,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
             content: '❌ このコマンドは管理者またはサーバーオーナーのみ使用できます',
             ephemeral: true
         });
+        logResult(interaction, 'status=failed action=unknown cause=permission-denied');
         return;
     }
 
@@ -36,9 +39,9 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     const categoryId = parts[2];
     if (!action || !categoryId) {
         await interaction.reply({ content: '❌ 無効な操作です', ephemeral: true });
+        logResult(interaction, `status=failed action=${action ?? '-'} cause=invalid-custom-id customId=${interaction.customId}`);
         return;
     }
-    console.log(`Table delete action: ${action}, categoryId: ${categoryId}`);
 
     try {
         if (action === 'confirm') {
@@ -50,6 +53,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
                 content: '❌ 不明な操作です',
                 ephemeral: true
             });
+            logResult(interaction, `status=failed action=${action} categoryId=${categoryId} cause=unknown-action`);
         }
     } catch (error) {
         console.error('テーブル削除操作エラー:', error);
@@ -59,6 +63,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         } else {
             await interaction.reply(payload);
         }
+        logResult(interaction, `status=failed action=${action} categoryId=${categoryId} cause=exception`);
     }
 }
 
@@ -76,6 +81,7 @@ async function handleDeleteConfirm(interaction: ButtonInteraction, categoryId: s
                 content: '❌ 指定されたカテゴリが見つかりません',
                 ephemeral: true
             });
+            logResult(interaction, `status=failed action=confirm categoryId=${categoryId} cause=category-not-found`);
             return;
         }
 
@@ -105,15 +111,10 @@ async function handleDeleteConfirm(interaction: ButtonInteraction, categoryId: s
         const categoryService = new CategoryManagementService(interaction.guild!);
         const result = await categoryService.deleteCategory(categoryId);
 
-        // 完了ログ（メッセージ編集は削除後不可能）
-        console.log(`テーブル削除実行完了:`, {
-            categoryName: result.categoryName,
-            deletedChannels: result.deletedChannelsCount,
-            deletedRoles: result.deletedRolesCount,
-            executor: interaction.user.username,
-            executorId: interaction.user.id,
-            timestamp: new Date().toISOString()
-        });
+        logResult(
+            interaction,
+            `status=success action=confirm category=${result.categoryName} deletedChannels=${result.deletedChannelsCount} deletedRoles=${result.deletedRolesCount}`
+        );
 
     } catch (error) {
         console.error('削除実行エラー:', error);
@@ -121,6 +122,7 @@ async function handleDeleteConfirm(interaction: ButtonInteraction, categoryId: s
             content: `❌ カテゴリ削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
             ephemeral: true
         });
+        logResult(interaction, `status=failed action=confirm categoryId=${categoryId} cause=delete-failed`);
     }
 }
 
@@ -146,6 +148,7 @@ async function handleDeleteCancel(interaction: ButtonInteraction, categoryId: st
             components: [],
             content: cancelMessage
         });
+        logResult(interaction, `status=success action=cancel category=${categoryName} categoryId=${categoryId}`);
 
     } catch (error) {
         console.error('削除キャンセルエラー:', error);
@@ -155,5 +158,6 @@ async function handleDeleteCancel(interaction: ButtonInteraction, categoryId: st
         } else {
             await interaction.reply(payload);
         }
+        logResult(interaction, `status=failed action=cancel categoryId=${categoryId} cause=cancel-failed`);
     }
 }

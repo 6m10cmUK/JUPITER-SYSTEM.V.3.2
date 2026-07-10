@@ -3,6 +3,7 @@ import { WebSocketServer } from '../websocket/WebSocketServer';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logSystem } from '../../shared/utils/UsageLogger';
 
 interface ScheduledNotification {
   id: string;
@@ -59,7 +60,7 @@ export class NotificationScheduler {
     
     const schedule: ScheduledNotification = {
       id,
-      type: repeat === 'none' ? 'once' : repeat as any,
+      type: repeat === 'none' ? 'once' : repeat as ScheduledNotification['type'],
       cronExpression,
       message,
       createdBy,
@@ -135,20 +136,25 @@ export class NotificationScheduler {
 
   private createCronJob(schedule: ScheduledNotification): void {
     const task = cron.schedule(schedule.cronExpression, () => {
-      // 終了日のチェック
-      if (schedule.until) {
-        const untilDate = new Date(schedule.until);
-        if (new Date() > untilDate) {
-          this.removeSchedule(schedule.id);
-          return;
+      try {
+        // 終了日のチェック
+        if (schedule.until) {
+          const untilDate = new Date(schedule.until);
+          if (new Date() > untilDate) {
+            this.removeSchedule(schedule.id);
+            return;
+          }
         }
-      }
 
-      this.sendNotification(schedule);
+        this.sendNotification(schedule);
 
-      // 1回限りのスケジュールは実行後に削除
-      if (schedule.type === 'once') {
-        this.removeSchedule(schedule.id);
+        // 1回限りのスケジュールは実行後に削除
+        if (schedule.type === 'once') {
+          this.removeSchedule(schedule.id);
+        }
+      } catch (error) {
+        logSystem('scheduler', `cron実行エラー: id=${schedule.id} type=${schedule.type} cron=${schedule.cronExpression} ${formatErrorMessage(error)}`);
+        console.error('[Scheduler] cron実行エラー:', getErrorStack(error) ?? error);
       }
     }, {
       scheduled: true,
@@ -213,22 +219,27 @@ export class NotificationScheduler {
   }
 
   private saveSchedules(): void {
-    const data = Array.from(this.schedules.values()).map(s => ({
-      id: s.id,
-      type: s.type,
-      cronExpression: s.cronExpression,
-      message: s.message,
-      createdBy: s.createdBy,
-      timeString: s.timeString,
-      scheduledDate: s.scheduledDate,
-      repeat: s.repeat,
-      interval: s.interval,
-      until: s.until,
-      nextExecutionDate: s.nextExecutionDate
-    }));
+    try {
+      const data = Array.from(this.schedules.values()).map(s => ({
+        id: s.id,
+        type: s.type,
+        cronExpression: s.cronExpression,
+        message: s.message,
+        createdBy: s.createdBy,
+        timeString: s.timeString,
+        scheduledDate: s.scheduledDate,
+        repeat: s.repeat,
+        interval: s.interval,
+        until: s.until,
+        nextExecutionDate: s.nextExecutionDate
+      }));
 
-    fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
-    console.log('[Scheduler] スケジュールを保存しました');
+      fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
+      console.log('[Scheduler] スケジュールを保存しました');
+    } catch (error) {
+      logSystem('scheduler', `スケジュール保存失敗: path=${this.dataFile} ${formatErrorMessage(error)}`);
+      console.error('[Scheduler] スケジュール保存失敗:', getErrorStack(error) ?? error);
+    }
   }
 
   private loadSchedules(): void {
@@ -260,4 +271,20 @@ export class NotificationScheduler {
       console.error('[Scheduler] スケジュールの読み込みに失敗:', error);
     }
   }
+}
+
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  try {
+    return String(error);
+  } catch {
+    return 'Unknown error';
+  }
+}
+
+function getErrorStack(error: unknown): string | undefined {
+  return error instanceof Error ? error.stack : undefined;
 }

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { logSystem } from '../../shared/utils/UsageLogger';
 
 export interface MeigenEntry {
     id: number;
@@ -53,6 +54,7 @@ export class MeigenService {
                 throw error;
             }
 
+            logSystem('meigen', `quotes.json未作成のため空データで開始: guild=${guildId}`);
             return {
                 nextId: 1,
                 entries: [],

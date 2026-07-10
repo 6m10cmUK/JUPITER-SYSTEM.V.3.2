@@ -1,4 +1,5 @@
 import { Client, Message } from 'discord.js';
+import type { AutocompleteInteraction } from 'discord.js';
 import { Command } from '../../shared/interfaces/Command';
 import { InteractionHandler } from '../../shared/interfaces/InteractionHandler';
 import { diceRoll } from '../../infrastructure/services/dice/classicDiceRoll';
@@ -6,9 +7,18 @@ import { createErrorMessage } from '../../presentation/discord/builders/messages
 import { WebSocketServer } from '../../infrastructure/websocket/WebSocketServer';
 import { MessageProcessor } from '../../infrastructure/services/MessageProcessor';
 import { banService } from '../../infrastructure/services/BanService';
+import { logBanBlock, logError, logMessageCommand, logSystem, logUsage } from '../../shared/utils/UsageLogger';
 
 import * as fs from 'fs';
 import * as path from 'path';
+
+type AutocompleteCommand = Command & {
+    autocomplete: (interaction: AutocompleteInteraction) => Promise<void>;
+};
+
+function hasAutocomplete(command: Command): command is AutocompleteCommand {
+    return 'autocomplete' in command && typeof command.autocomplete === 'function';
+}
 
 export class DiscordAdapter {
     /** bot運営者(OWNER_ID)のみが実行できるメッセージコマンド */
@@ -107,20 +117,21 @@ export class DiscordAdapter {
                 interaction.user.id !== process.env.OWNER_ID &&
                 banService.isBlocked(interaction.user.id, interaction.guildId)
             ) {
+                logBanBlock(interaction);
                 return;
             }
 
             if (interaction.isAutocomplete()) {
                 const command = this.commands.get(interaction.commandName);
-                if (command && 'autocomplete' in command && typeof (command as any).autocomplete === 'function') {
+                if (command && hasAutocomplete(command)) {
                     try {
-                        await (command as any).autocomplete(interaction);
+                        await command.autocomplete(interaction);
                     } catch (error) {
                         console.error(`Autocomplete error for ${interaction.commandName}:`, error);
                     }
                 }
             } else if (interaction.isChatInputCommand()) {
-                console.log(`${interaction.guild?.id} ${interaction.user.globalName} ${interaction.commandName}`);
+                logUsage(interaction);
                 const command = this.commands.get(interaction.commandName);
 
                 if (!command) {
@@ -138,7 +149,7 @@ export class DiscordAdapter {
                 try {
                     await command.execute(interaction);
                 } catch (error) {
-                    console.error(error);
+                    logError(interaction, error, `/${interaction.commandName}`);
                     await interaction.reply(
                         createErrorMessage(
                             interaction,
@@ -149,13 +160,12 @@ export class DiscordAdapter {
                 }
             } else if (interaction.isStringSelectMenu() || interaction.isButton()) {
                 const [prefix] = interaction.customId.split(':');
-                console.log(`Processing interaction with customId: ${interaction.customId}, prefix: ${prefix}`);
                 
+                logUsage(interaction);
 
                 const handler = this.interactionHandlers.get(prefix);
 
                 if (handler) {
-                    console.log(`Found handler for prefix: ${prefix}`);
                     try {
                         await handler.execute(interaction);
                     } catch (error) {
@@ -172,6 +182,8 @@ export class DiscordAdapter {
                     console.warn(`No handler found for prefix: ${prefix}`);
                 }
             } else if (interaction.isModalSubmit()) {
+                logUsage(interaction);
+
                 // changeNameModalの処理
                 if (interaction.customId.startsWith('nameChangeModal:')) {
                     const { handleNameChangeModal } = await import('../../interactions/changeNameInteraction');
@@ -187,9 +199,8 @@ export class DiscordAdapter {
                             )
                         );
                     }
-                }
-                // customSetModalの処理
-                if (interaction.customId.startsWith('customSetModal:')) {
+                } else if (interaction.customId.startsWith('customSetModal:')) {
+                    // customSetModalの処理
                     const { handleCustomSetModal } = await import('../../interactions/customSetInteraction');
                     try {
                         await handleCustomSetModal(interaction);
@@ -203,9 +214,8 @@ export class DiscordAdapter {
                             )
                         );
                     }
-                }
-                // wordleGuessModalの処理
-                if (interaction.customId.startsWith('wordle:guess:')) {
+                } else if (interaction.customId.startsWith('wordle:guess:')) {
+                    // wordleGuessModalの処理
                     const { handleWordleGuessModal } = await import('../../modals/wordleGuessModal');
                     try {
                         await handleWordleGuessModal(interaction);
@@ -219,6 +229,9 @@ export class DiscordAdapter {
                             )
                         );
                     }
+                } else {
+                    console.warn(`Unknown modal customId: ${interaction.customId}`);
+                    logSystem('discord-adapter', `未知のmodal customId: ${interaction.customId}`);
                 }
             }
         });
@@ -230,6 +243,7 @@ export class DiscordAdapter {
             message.author.id !== process.env.OWNER_ID &&
             banService.isBlocked(message.author.id, message.guild?.id)
         ) {
+            logBanBlock(message);
             return;
         }
 
@@ -252,12 +266,29 @@ export class DiscordAdapter {
 
         const adminCommand = this.adminCommands.get(command);
         if (adminCommand) {
+            const commandDetail = args.length > 0 ? args.join(' ') : undefined;
+            const executeAdminCommand = async () => {
+                try {
+                    logMessageCommand(message, command, commandDetail);
+                    await adminCommand(message, guildId);
+                } catch (error) {
+                    logError(message, error, `#${command}`);
+                    await message.reply(
+                        createErrorMessage(
+                            message,
+                            `COMMAND FAILED`,
+                            'コマンドの実行中にエラーが発生しました'
+                        )
+                    );
+                }
+            };
+
             // BAN管理コマンドはbot運営者のみ。権限が無ければ無言で無視
             if (DiscordAdapter.OWNER_ONLY_COMMANDS.has(command)) {
                 if (message.author.id !== process.env.OWNER_ID) {
                     return;
                 }
-                await adminCommand(message, guildId);
+                await executeAdminCommand();
                 return;
             }
             // 管理者権限を持っているか確認
@@ -271,7 +302,7 @@ export class DiscordAdapter {
                 );
                 return;
             }
-            await adminCommand(message, guildId);
+            await executeAdminCommand();
         }
     }
-} 
+}

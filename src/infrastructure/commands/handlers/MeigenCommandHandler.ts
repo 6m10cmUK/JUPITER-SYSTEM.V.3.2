@@ -7,6 +7,7 @@ import {
 } from '../../../presentation/discord/builders/messages';
 import { MeigenService, MeigenEntry } from '../../../domain/services/MeigenService';
 import { MeigenError } from '../../../shared/errors/MeigenError';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 const MAX_LIST_DISPLAY_COUNT = 20;
 const MAX_LIST_DESCRIPTION_LENGTH = 4096;
@@ -135,10 +136,7 @@ export class MeigenCommandHandler {
             createSuccessMessage(interaction, 'MEIGEN REGISTERED', `#${entry.id} [${content}] - ${authorDisplay}`)
         );
 
-        // ログ出力
-        console.log(
-            `${guildId} ${interaction.user.username} meigen add #${entry.id}: "${content}" ― ${authorDisplay}`
-        );
+        logResult(interaction, `status=success subcommand=add id=${entry.id} author=${authorDisplay}`);
     }
 
     /**
@@ -194,8 +192,7 @@ export class MeigenCommandHandler {
             createInfoMessage(interaction, 'MEIGEN', `#${entry.id} [${entry.content}] - ${authorDisplay}`)
         );
 
-        // ログ出力
-        console.log(`${guildId} ${interaction.user.username} meigen random ＞ #${entry.id}`);
+        logResult(interaction, `status=success subcommand=random id=${entry.id}`);
     }
 
     /**
@@ -234,8 +231,7 @@ export class MeigenCommandHandler {
 
         await interaction.reply(message);
 
-        // ログ出力
-        console.log(`${guildId} ${interaction.user.username} meigen list ＞ ${entries.length}件`);
+        logResult(interaction, `status=success subcommand=list total=${entries.length} displayed=${displayEntries.length}`);
     }
 
     /**
@@ -379,7 +375,6 @@ export class MeigenCommandHandler {
 
         await interaction.reply(createSuccessMessage(interaction, 'MEIGEN DELETED', `#${id}`));
 
-        // ログ出力
-        console.log(`${guildId} ${interaction.user.username} meigen delete #${id}`);
+        logResult(interaction, `status=success subcommand=delete id=${id}`);
     }
 }

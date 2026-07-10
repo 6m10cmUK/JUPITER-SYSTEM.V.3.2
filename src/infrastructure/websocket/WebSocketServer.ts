@@ -1,6 +1,7 @@
-import { WebSocketServer as WSServer } from 'ws';
+import { WebSocket, WebSocketServer as WSServer } from 'ws';
 import { Server } from 'http';
 import { EventEmitter } from 'events';
+import { logSystem } from '../../shared/utils/UsageLogger';
 
 export interface NotificationData {
   type: 'notification';
@@ -17,7 +18,7 @@ export interface NotificationData {
 
 export class WebSocketServer extends EventEmitter {
   private wss: WSServer;
-  private clients: Map<string, any> = new Map();
+  private clients: Map<string, WebSocket> = new Map();
   
   constructor(server: Server) {
     super();
@@ -84,45 +85,50 @@ export class WebSocketServer extends EventEmitter {
   }
   
   public sendNotification(data: NotificationData): void {
-    // Slack通知の場合は特別な処理
-    if (data.is_slack || data.app?.toLowerCase().includes('slack')) {
-      console.log(`[WebSocket] Slack通知を検出: ${data.title}`);
-      
-      // notification_typeに応じたプレフィックスを追加
-      let prefix = '💬';
-      if (data.notification_type) {
-        switch (data.notification_type) {
-          case 'MENTION':
-            prefix = '📢';
-            break;
-          case 'DM':
-            prefix = '✉️';
-            break;
-          case 'THREAD':
-            prefix = '🧵';
-            break;
-          case 'MESSAGE':
-            prefix = '💬';
-            break;
+    try {
+      // Slack通知の場合は特別な処理
+      if (data.is_slack || data.app?.toLowerCase().includes('slack')) {
+        console.log(`[WebSocket] Slack通知を検出: ${data.title}`);
+        
+        // notification_typeに応じたプレフィックスを追加
+        let prefix = '💬';
+        if (data.notification_type) {
+          switch (data.notification_type) {
+            case 'MENTION':
+              prefix = '📢';
+              break;
+            case 'DM':
+              prefix = '✉️';
+              break;
+            case 'THREAD':
+              prefix = '🧵';
+              break;
+            case 'MESSAGE':
+              prefix = '💬';
+              break;
+          }
         }
+        
+        data.title = `${prefix} ${data.title}`;
       }
       
-      data.title = `${prefix} ${data.title}`;
-    }
-    
-    // Discord通知の場合の処理
-    if (data.app?.toLowerCase().includes('discord')) {
-      data.title = `🎮 ${data.title}`;
-    }
-    
-    const message = JSON.stringify(data);
-    
-    this.clients.forEach((ws, clientId) => {
-      if (ws.readyState === ws.OPEN) {
-        ws.send(message);
-        console.log(`[WebSocket] 通知送信 to ${clientId}: ${data.app} - ${data.notification_type || 'N/A'}`);
+      // Discord通知の場合の処理
+      if (data.app?.toLowerCase().includes('discord')) {
+        data.title = `🎮 ${data.title}`;
       }
-    });
+      
+      const message = JSON.stringify(data);
+      
+      this.clients.forEach((ws, clientId) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          console.log(`[WebSocket] 通知送信 to ${clientId}: ${data.app} - ${data.notification_type || 'N/A'}`);
+        }
+      });
+    } catch (error) {
+      logSystem('websocket', `通知送信失敗: title=${data.title} app=${data.app ?? 'N/A'} type=${data.notification_type ?? 'N/A'} ${formatErrorMessage(error)}`);
+      console.error('[WebSocket] 通知送信失敗:', getErrorStack(error) ?? error);
+    }
   }
   
   private generateClientId(): string {
@@ -130,23 +136,44 @@ export class WebSocketServer extends EventEmitter {
   }
   
   private broadcastDismiss(dismissedBy: string, excludeClientId: string): void {
-    const message = JSON.stringify({
-      type: 'dismiss_notification',
-      dismissed_by: dismissedBy
-    });
-    
-    console.log(`[WebSocket] broadcastDismiss開始: dismissedBy=${dismissedBy}, excludeClientId=${excludeClientId}`);
-    let sentCount = 0;
-    
-    this.clients.forEach((ws, clientId) => {
-      console.log(`[WebSocket] クライアント確認: ${clientId}, readyState=${ws.readyState}, excluded=${clientId === excludeClientId}`);
-      if (clientId !== excludeClientId && ws.readyState === ws.OPEN) {
-        ws.send(message);
-        sentCount++;
-        console.log(`[WebSocket] 消去通知送信 to ${clientId}`);
-      }
-    });
-    
-    console.log(`[WebSocket] broadcastDismiss完了: ${sentCount}件送信`);
+    try {
+      const message = JSON.stringify({
+        type: 'dismiss_notification',
+        dismissed_by: dismissedBy
+      });
+      
+      console.log(`[WebSocket] broadcastDismiss開始: dismissedBy=${dismissedBy}, excludeClientId=${excludeClientId}`);
+      let sentCount = 0;
+      
+      this.clients.forEach((ws, clientId) => {
+        console.log(`[WebSocket] クライアント確認: ${clientId}, readyState=${ws.readyState}, excluded=${clientId === excludeClientId}`);
+        if (clientId !== excludeClientId && ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+          console.log(`[WebSocket] 消去通知送信 to ${clientId}`);
+        }
+      });
+      
+      console.log(`[WebSocket] broadcastDismiss完了: ${sentCount}件送信`);
+    } catch (error) {
+      logSystem('websocket', `通知消去ブロードキャスト失敗: dismissedBy=${dismissedBy} excludeClientId=${excludeClientId} ${formatErrorMessage(error)}`);
+      console.error('[WebSocket] 通知消去ブロードキャスト失敗:', getErrorStack(error) ?? error);
+    }
   }
+}
+
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  try {
+    return String(error);
+  } catch {
+    return 'Unknown error';
+  }
+}
+
+function getErrorStack(error: unknown): string | undefined {
+  return error instanceof Error ? error.stack : undefined;
 }

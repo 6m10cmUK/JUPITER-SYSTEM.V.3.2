@@ -5,6 +5,7 @@ import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFo
 import { convertFullWidthToHalfWidth } from '../../../shared/utils/stringUtils';
 import { DiceCommandValidator } from './validation/diceCommandValidator';
 import { DiceSystemError, InvalidExpressionError } from '../../../shared/errors/DiceSystemError';
+import { logMessageResult, logSystem } from '../../../shared/utils/UsageLogger';
 
 export class DiceRollHandler {
     private readonly rollDiceUseCase: RollDiceUseCase;
@@ -52,9 +53,10 @@ export class DiceRollHandler {
             
             await message.reply({ embeds: [embedWithFullExpression] });
             
-            // 成功ログ（型安全に）
-            console.log(
-                `${message.guildId} ${message.author.username} ${content} ${response.rolls.map(r => r.result).join(' ')}`
+            logMessageResult(
+                message,
+                'dice-roll',
+                `status=success expression=${diceExpression} source=${content} rolls=${response.rolls.map(roll => roll.result).join(' ') || '-'}`
             );
             
         } catch (error) {
@@ -69,8 +71,11 @@ export class DiceRollHandler {
                 // システムエラーの場合はリアクションで通知
                 try {
                     await message.react('❌');
-                } catch (reactionError) {
-                    // リアクション失敗時は無視
+                } catch (reactionError: unknown) {
+                    logSystem(
+                        'diceroll',
+                        `リアクション付与失敗: ${reactionError instanceof Error ? reactionError.message : String(reactionError)}`
+                    );
                 }
                 console.error('Dice system error:', {
                     error: error.message,
@@ -91,4 +96,3 @@ export class DiceRollHandler {
         }
     }
 }
-

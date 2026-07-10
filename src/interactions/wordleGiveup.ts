@@ -3,6 +3,7 @@ import {
   StringSelectMenuInteraction
 } from 'discord.js';
 import { activeGames } from './wordleStart';
+import { logResult } from '../shared/utils/UsageLogger';
 
 export const prefix = 'wordle:giveup';
 
@@ -17,6 +18,7 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
       content: 'ゲームが見つかりません。', 
       ephemeral: true 
     });
+    logResult(interaction, `status=failed action=giveup gameKey=${gameKey} cause=game-not-found`);
     return;
   }
 
@@ -46,4 +48,8 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
     }],
     components: []
   });
+  logResult(
+    interaction,
+    `status=success action=giveup gameKey=${gameKey} guesses=${game.getGuessCount()} answer=${game.answer}`
+  );
 }

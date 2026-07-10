@@ -2,8 +2,27 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { generateEmbed } from '../../../presentation/discord/builders/embedGenerator';
 import { rollDice } from '../../../domain/utils/dice';
 import { getDataDir } from '../../../shared/utils/dataPath';
+import { logResult } from '../../../shared/utils/UsageLogger';
 import fs from 'fs';
 import path from 'path';
+
+const RESULT_DETAIL_LIMIT = 300;
+
+type NameGender = 'male' | 'female';
+type NameRegion = 'jp' | 'en';
+
+interface NameData {
+    mei?: Partial<Record<NameGender, string[]>>;
+    sei?: string[];
+    given_en?: Partial<Record<NameGender, string[]>>;
+    surname_en?: string[];
+}
+
+interface GeneratedName {
+    first: string;
+    last: string;
+    full: string;
+}
 
 /**
  * 名前生成コマンドハンドラー（統一アーキテクチャ）
@@ -14,10 +33,10 @@ export class NameCommandHandler {
      * @param interaction Discord インタラクション
      */
     async handle(interaction: ChatInputCommandInteraction): Promise<void> {
-        const typeInput = interaction.options.getString('type') as 'male' | 'female' | null;
-        const type: 'male' | 'female' = typeInput ?? 'male';
-        const regionInput = interaction.options.getString('region') as 'jp' | null;
-        const region: 'jp' = regionInput ?? 'jp';
+        const typeInput = interaction.options.getString('type') as NameGender | null;
+        const type: NameGender = typeInput ?? 'male';
+        const regionInput = interaction.options.getString('region') as NameRegion | null;
+        const region: NameRegion = regionInput ?? 'jp';
         const rawCount = interaction.options.getInteger('count') ?? 1;
         const count = Math.min(Math.max(rawCount, 1), 10); // 1〜10に制限
 
@@ -44,6 +63,7 @@ export class NameCommandHandler {
             });
 
             await interaction.editReply({ embeds: [embed] });
+            logResult(interaction, truncateResultDetail(formatNameResultDetail(type, region, names)));
 
         } catch (error) {
             await interaction.editReply({
@@ -64,21 +84,17 @@ export class NameCommandHandler {
     /**
      * 名前データを型安全に読み込み
      */
-    private async loadNameData(): Promise<any> {
+    private async loadNameData(): Promise<NameData> {
         const dataPath = path.join(getDataDir(), 'names.json');
         const rawData = fs.readFileSync(dataPath, 'utf8');
-        return JSON.parse(rawData);
+        return JSON.parse(rawData) as NameData;
     }
 
     /**
      * 名前を生成
      */
-    private generateNames(nameData: any, type: string, region: string, count: number): Array<{
-        first: string;
-        last: string;
-        full: string;
-    }> {
-        const names = [];
+    private generateNames(nameData: NameData, type: NameGender, region: NameRegion, count: number): GeneratedName[] {
+        const names: GeneratedName[] = [];
         
         for (let i = 0; i < count; i++) {
             let firstName: string;
@@ -109,4 +125,17 @@ export class NameCommandHandler {
         
         return names;
     }
+}
+
+function formatNameResultDetail(type: NameGender, region: NameRegion, names: GeneratedName[]): string {
+    const representative = names[0]?.full ?? 'なし';
+    return `status=success type=${type} region=${region} count=${names.length} representative=${representative}`;
+}
+
+function truncateResultDetail(detail: string): string {
+    if (detail.length <= RESULT_DETAIL_LIMIT) {
+        return detail;
+    }
+
+    return `${detail.slice(0, RESULT_DETAIL_LIMIT - 3)}...`;
 }

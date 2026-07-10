@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { logSystem } from '../../shared/utils/UsageLogger';
 
 export interface BanRecord {
     /** BANを実行した運営者のユーザーID */
@@ -51,11 +52,18 @@ export class BanService {
             console.log(`[Ban] BAN情報を読み込みました (users: ${userCount}, servers: ${serverCount})`);
         } catch (error) {
             console.error('[Ban] BAN情報の読み込みに失敗:', error);
+            logSystem('ban', '警告: BANデータ読込失敗。空データでフェイルオープン継続中');
         }
     }
 
     private save(): void {
-        fs.writeFileSync(this.dataFile, JSON.stringify(this.data, null, 2));
+        try {
+            fs.writeFileSync(this.dataFile, JSON.stringify(this.data, null, 2));
+        } catch (error: unknown) {
+            logSystem('ban', `bans.json書き込み失敗: ${error instanceof Error ? error.message : String(error)}`);
+            console.error(error instanceof Error && error.stack ? error.stack : error);
+            throw error;
+        }
     }
 
     isUserBanned(userId: string): boolean {

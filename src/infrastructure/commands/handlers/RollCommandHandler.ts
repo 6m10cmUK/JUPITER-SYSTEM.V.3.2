@@ -6,6 +6,7 @@ import { DiceEmbedFormatter } from '../../../presentation/formatters/DiceEmbedFo
 import { DiceSystemError, InvalidExpressionError } from '../../../shared/errors/DiceSystemError';
 import { CommandHandler } from '../../../shared/interfaces/patterns/CommandPatterns';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 /**
  * ダイスロールコマンドハンドラー
@@ -41,8 +42,9 @@ export class RollCommandHandler implements Command, CommandHandler {
             await interaction.reply({ embeds: [embed] });
             
             // 成功ログ（簡潔に）
-            console.log(
-                `${interaction.guildId} ${interaction.user.username} ${expression} ${response.rolls.map(r => r.result).join(' ')}`
+            logResult(
+                interaction,
+                `${expression} ＞ ${response.rolls.map(roll => roll.result).join(' ')}`
             );
             
         } catch (error) {
@@ -79,4 +81,3 @@ export class RollCommandHandler implements Command, CommandHandler {
         await this.execute(interaction);
     }
 }
-

@@ -8,6 +8,7 @@ import {
 } from 'discord.js';
 import { WordleGame } from '../domain/entities/WordleGame';
 import * as wordleWords from '../data/wordle-words.json';
+import { logResult } from '../shared/utils/UsageLogger';
 
 // ゲーム状態を保存するMap（本番ではRedisなどを使用推奨）
 export const activeGames = new Map<string, WordleGame>();
@@ -24,7 +25,6 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
 
     // ランダムに答えを選択
     const answer = wordleWords.words[Math.floor(Math.random() * wordleWords.words.length)];
-    console.log(`Starting new Wordle game for ${userId} with answer: ${answer}`);
     
     // 新しいゲームを作成
     const game = new WordleGame(userId, channelId, answer, new Date());
@@ -50,6 +50,7 @@ export async function execute(interaction: ButtonInteraction | StringSelectMenuI
     modal.addComponents(row);
 
     await interaction.showModal(modal);
+    logResult(interaction, `status=success action=start gameKey=${gameKey} answer=${answer}`);
   } catch (error) {
     console.error('Error in wordleStart execute:', error);
     throw error;

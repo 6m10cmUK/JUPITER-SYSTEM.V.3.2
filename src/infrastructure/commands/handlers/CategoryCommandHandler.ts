@@ -10,6 +10,7 @@ import {
     CategoryManagementError
 } from '../../../domain/services/CategoryManagementService';
 import { GuildServiceFactory } from '../../factories/CommandHandlerFactory';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 /**
  * カテゴリー操作コマンドのオプション型定義
@@ -104,6 +105,10 @@ export class CategoryCommandHandler {
             await interaction.editReply(
                 createSuccessMessage(interaction, 'CATEGORY CREATED', result.summary)
             );
+            logResult(
+                interaction,
+                `status=success operation=create category=${result.category.name} handouts=${result.channels.handouts.length}`
+            );
 
         } catch (error) {
             if (error instanceof CategoryManagementError) {
@@ -165,10 +170,12 @@ export class CategoryCommandHandler {
 
             // 削除実行（メッセージは削除後に編集不可能になるため、事前通知で完了）
             const categoryService = this.categoryServiceFactory(interaction.guild);
-            await categoryService.deleteCategory(categoryId);
+            const result = await categoryService.deleteCategory(categoryId);
 
-            // 削除後の編集は不可能なため、ここではログ出力のみ
-            console.log(`カテゴリ「${categoryName}」の削除が完了しました。チャンネル: ${channelCount}個、ロール: ${roleCount}個`);
+            logResult(
+                interaction,
+                `status=success operation=delete category=${result.categoryName} deletedChannels=${result.deletedChannelsCount} deletedRoles=${result.deletedRolesCount}`
+            );
 
         } catch (error) {
             if (error instanceof CategoryManagementError) {

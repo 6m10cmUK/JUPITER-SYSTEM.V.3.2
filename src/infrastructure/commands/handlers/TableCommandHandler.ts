@@ -6,9 +6,9 @@ import {
     ButtonBuilder,
     ButtonStyle,
     ChannelType,
-    ThreadChannel,
     User
 } from 'discord.js';
+import type { CategoryChannel, GuildBasedChannel } from 'discord.js';
 import { createSuccessMessage, createErrorMessage } from '../../../presentation/discord/builders/messages';
 import { UnifiedErrorHandler } from '../../../shared/errors/UnifiedErrorHandler';
 import {
@@ -20,6 +20,7 @@ import {
     ChannelLogError
 } from '../../../domain/services/ChannelLogService';
 import { GuildServiceFactory } from '../../factories/CommandHandlerFactory';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 /**
  * テーブル管理コマンドのオプション型定義
@@ -133,6 +134,12 @@ export class TableCommandHandler {
             await interaction.editReply(
                 createSuccessMessage(interaction, 'TABLE SETUP COMPLETED', result.summary)
             );
+            const textChannelCount = 4 + result.channels.handouts.length;
+            const voiceChannelCount = result.channels.voices ? 2 : 0;
+            logResult(
+                interaction,
+                `status=success subcommand=setup category=${result.category.name} textChannels=${textChannelCount} voiceChannels=${voiceChannelCount} handouts=${result.channels.handouts.length}`
+            );
 
         } catch (error) {
             if (error instanceof CategoryManagementError) {
@@ -166,15 +173,7 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
-        const ch = interaction.channel;
-        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
-            ? (ch as ThreadChannel).parent
-            : (ch as any)?.parent;
-        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
-        if (!category || category.type !== ChannelType.GuildCategory) {
-            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
-        }
+        const category = this.getCurrentCategory(interaction);
         const categoryId = category.id;
 
         try {
@@ -199,6 +198,10 @@ export class TableCommandHandler {
 
             await interaction.editReply(
                 createSuccessMessage(interaction, 'HANDOUT ASSIGNED', successMessage)
+            );
+            logResult(
+                interaction,
+                `status=success subcommand=handout category=${category.name} handout=${result.handoutNumber} user=${result.user.id} channel=${result.userChannel.name}`
             );
 
         } catch (error) {
@@ -227,15 +230,7 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
-        const ch = interaction.channel;
-        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
-            ? (ch as ThreadChannel).parent
-            : (ch as any)?.parent;
-        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
-        if (!category || category.type !== ChannelType.GuildCategory) {
-            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
-        }
+        const category = this.getCurrentCategory(interaction);
         const categoryId = category.id;
         const categoryName = category.name;
 
@@ -268,6 +263,10 @@ export class TableCommandHandler {
             await interaction.editReply(
                 createSuccessMessage(interaction, 'PARTY CREATED', successMessage)
             );
+            logResult(
+                interaction,
+                `status=success subcommand=add category=${result.categoryName} party=${result.partyNumber} role=${result.role.name} channel=${result.channel.name}`
+            );
 
         } catch (error) {
             if (error instanceof CategoryManagementError) {
@@ -289,15 +288,7 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルの親カテゴリを使用（スレッド/通常両対応）
-        const ch = interaction.channel;
-        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
-            ? (ch as ThreadChannel).parent
-            : (ch as any)?.parent;
-        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
-        if (!category || category.type !== ChannelType.GuildCategory) {
-            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
-        }
+        const category = this.getCurrentCategory(interaction);
         const categoryId = category.id;
 
         try {
@@ -367,6 +358,10 @@ export class TableCommandHandler {
                 embeds: [confirmEmbed],
                 components: [actionRow]
             });
+            logResult(
+                interaction,
+                `status=success subcommand=delete action=confirm-prompt category=${categoryName} channels=${channelCount} roles=${roleCount}`
+            );
 
         } catch (error) {
             if (error instanceof CategoryManagementError) {
@@ -388,15 +383,7 @@ export class TableCommandHandler {
             throw new TableError('このコマンドはサーバー内でのみ使用できます', 'OPERATION_FAILED');
         }
 
-        // 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
-        const ch = interaction.channel;
-        const parentOrSelf = (ch && typeof (ch as any).isThread === 'function' && (ch as any).isThread())
-            ? (ch as ThreadChannel).parent
-            : (ch as any)?.parent;
-        const category = parentOrSelf?.type === ChannelType.GuildCategory ? parentOrSelf : parentOrSelf?.parent;
-        if (!category || category.type !== ChannelType.GuildCategory) {
-            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
-        }
+        const category = this.getCurrentCategory(interaction);
         const categoryId = category.id;
         const categoryName = category.name;
 
@@ -416,16 +403,10 @@ export class TableCommandHandler {
                 content: completionMessage
             });
 
-            // 成功ログ
-            console.log(`ログ収集完了: カテゴリ「${categoryName}」`, {
-                totalMessages: result.totalMessages,
-                totalAttachments: result.totalAttachments,
-                processedChannels: result.processedChannels,
-                errors: result.errors.length,
-                executor: interaction.user.username,
-                executorId: interaction.user.id,
-                timestamp: new Date().toISOString()
-            });
+            logResult(
+                interaction,
+                `status=success subcommand=log category=${categoryName} messages=${result.totalMessages} attachments=${result.totalAttachments} channels=${result.processedChannels} errors=${result.errors.length}`
+            );
 
         } catch (error) {
             if (error instanceof ChannelLogError) {
@@ -436,6 +417,25 @@ export class TableCommandHandler {
                 'OPERATION_FAILED'
             );
         }
+    }
+
+    /**
+     * 現在のチャンネルが属するカテゴリを取得（スレッド/通常両対応）
+     * @param interaction Discord インタラクション
+     * @returns 現在チャンネルのカテゴリ
+     */
+    private getCurrentCategory(interaction: ChatInputCommandInteraction): CategoryChannel {
+        const channel = interaction.channel as GuildBasedChannel | null;
+        const parentOrSelf = channel?.isThread() ? channel.parent : channel;
+        const category = parentOrSelf?.type === ChannelType.GuildCategory
+            ? parentOrSelf
+            : parentOrSelf?.parent;
+
+        if (!category || category.type !== ChannelType.GuildCategory) {
+            throw new TableError('このコマンドはカテゴリ内のチャンネルから実行してください', 'INVALID_INPUT');
+        }
+
+        return category;
     }
 
     /**

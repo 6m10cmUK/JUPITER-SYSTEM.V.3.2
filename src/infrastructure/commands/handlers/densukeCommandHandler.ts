@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction } from 'discord.js';
 import { HolidayService } from '../../../domain/services/holidayService';
 import { DensukeEmbedFormatter } from '../../../presentation/formatters/densukeEmbedFormatter';
+import { logResult } from '../../../shared/utils/UsageLogger';
 
 export class DensukeCommandHandler {
   constructor(private holidayService: HolidayService, private formatter: DensukeEmbedFormatter) {}
@@ -43,6 +44,10 @@ export class DensukeCommandHandler {
       const embed = this.formatter.formatCalendar(startDate, endDate, holidays, filter);
 
       await interaction.editReply({ embeds: [embed] });
+      logResult(
+        interaction,
+        `status=success url=https://densuke.biz/ start=${formatDateForLog(startDate)} end=${formatDateForLog(endDate)} holidays=${holidays.length}`
+      );
     } catch (error) {
       console.error('Error in densuke command:', error);
       await interaction.editReply({
@@ -50,4 +55,8 @@ export class DensukeCommandHandler {
       });
     }
   }
+}
+
+function formatDateForLog(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }

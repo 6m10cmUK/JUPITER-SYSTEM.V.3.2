@@ -10,10 +10,12 @@ import {
     NinpoDisplayData
 } from '../../../application/dto/NinpoDto';
 import { getDataDir } from '../../../shared/utils/dataPath';
+import { logResult } from '../../../shared/utils/UsageLogger';
 import fs from 'fs';
 import path from 'path';
 
 const NINPOS_PER_PAGE = 9;
+const RESULT_DETAIL_LIMIT = 300;
 
 /**
  * 忍法コマンドハンドラー
@@ -76,6 +78,10 @@ export class NinpoCommandHandler {
         const components = NinpoComponentBuilder.createComponents(criteria, displayData);
 
         await interaction.editReply({ embeds: [embed], components });
+        logResult(
+            interaction,
+            truncateResultDetail(formatNinpoResultDetail(criteria, displayData, displayData.ninpos.length))
+        );
     }
 
     /**
@@ -100,6 +106,10 @@ export class NinpoCommandHandler {
         const components = NinpoComponentBuilder.createComponents(criteria, displayData);
 
         await interaction.editReply({ embeds: [embed], components });
+        logResult(
+            interaction,
+            truncateResultDetail(formatNinpoResultDetail(criteria, displayData, this.countNinpoSearchResults(criteria)))
+        );
     }
 
     /**
@@ -219,10 +229,41 @@ export class NinpoCommandHandler {
 
         return nameMap[category] || category;
     }
+
+    private countNinpoSearchResults(criteria: NinpoSearchCriteria): number {
+        let ninpos = this.ninpoService.searchNinpo(criteria);
+
+        if (criteria.limit != null) {
+            ninpos = ninpos.slice(0, criteria.limit);
+        }
+
+        return ninpos.length;
+    }
 }
 
 function getPagedNinpos(ninpos: NinpoData[], page: number): NinpoData[] {
     const start = (page - 1) * NINPOS_PER_PAGE;
     const end = start + NINPOS_PER_PAGE;
     return ninpos.slice(start, end);
+}
+
+function formatNinpoResultDetail(
+    criteria: NinpoSearchCriteria,
+    displayData: NinpoDisplayData,
+    totalResults: number
+): string {
+    const representative = displayData.ninpos[0]?.name ?? '-';
+    const query = criteria.query ? ` query=${criteria.query}` : '';
+    const limit = criteria.limit != null ? ` limit=${criteria.limit}` : '';
+    const category = displayData.currentCategory ? ` currentCategory=${displayData.currentCategory}` : '';
+
+    return `status=success searchType=${criteria.searchType} category=${criteria.category}${query}${limit}${category} page=${displayData.currentPage}/${displayData.maxPage} total=${totalResults} displayed=${displayData.ninpos.length} representative=${representative}`;
+}
+
+function truncateResultDetail(detail: string): string {
+    if (detail.length <= RESULT_DETAIL_LIMIT) {
+        return detail;
+    }
+
+    return `${detail.slice(0, RESULT_DETAIL_LIMIT - 3)}...`;
 }

@@ -5,7 +5,48 @@ import * as packageJson from '../package.json';
 import { createServer } from 'http';
 import { WebSocketServer } from './infrastructure/websocket/WebSocketServer';
 import { NotificationScheduler } from './infrastructure/services/NotificationScheduler';
+import { logError, logSystem } from './shared/utils/UsageLogger';
 dotenv.config();
+
+function formatErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}`;
+    }
+
+    if (typeof error === 'string') {
+        return error;
+    }
+
+    return stringifyUnknown(error);
+}
+
+function getErrorStack(error: unknown): string | undefined {
+    if (error instanceof Error) {
+        return error.stack;
+    }
+
+    if (typeof error === 'object' && error !== null && 'stack' in error && typeof error.stack === 'string') {
+        return error.stack;
+    }
+
+    return undefined;
+}
+
+function logStack(error: unknown): void {
+    const stack = getErrorStack(error);
+    if (stack) {
+        console.error(stack);
+    }
+}
+
+function stringifyUnknown(value: unknown): string {
+    try {
+        const serialized = JSON.stringify(value);
+        return serialized ?? String(value);
+    } catch {
+        return String(value);
+    }
+}
 
 async function main() {
     const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -27,12 +68,19 @@ async function main() {
         ]
     });
 
-    client.on('error', error => {
-        console.error('クライアントエラー:', error);
+    client.on('error', (error: Error) => {
+        logSystem('discord-client', `error: ${formatErrorMessage(error)}`);
+        logStack(error);
     });
 
-    process.on('unhandledRejection', error => {
-        console.error('未処理のエラー:', error);
+    process.on('unhandledRejection', (error: unknown) => {
+        logSystem('process', `unhandledRejection: ${formatErrorMessage(error)}`);
+        logStack(error);
+    });
+
+    process.on('uncaughtException', (error: Error) => {
+        logSystem('process', `uncaughtException: ${formatErrorMessage(error)}`);
+        logStack(error);
     });
 
     // HTTPサーバーとWebSocketサーバーの初期化
@@ -61,7 +109,11 @@ async function main() {
 
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
-        await discordAdapter.handleMessage(message);
+        try {
+            await discordAdapter.handleMessage(message);
+        } catch (error: unknown) {
+            logError(message, error, 'messageCreate');
+        }
     });
 
     // サーバーを起動
@@ -73,7 +125,8 @@ async function main() {
     await client.login(DISCORD_TOKEN);
 }
 
-main().catch(err => {
-    console.error('起動エラー:', err);
+main().catch((err: unknown) => {
+    logSystem('startup', `起動エラー: ${formatErrorMessage(err)}`);
+    logStack(err);
     process.exit(1);
 });

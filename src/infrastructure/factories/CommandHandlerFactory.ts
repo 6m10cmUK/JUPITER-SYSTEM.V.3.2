@@ -8,6 +8,7 @@ import { NinpoCommandHandler } from '../commands/handlers/NinpoCommandHandler';
 import { DensukeCommandHandler } from '../commands/handlers/densukeCommandHandler';
 import { CategoryCommandHandler } from '../commands/handlers/CategoryCommandHandler';
 import { TableCommandHandler } from '../commands/handlers/TableCommandHandler';
+import { MeigenCommandHandler } from '../commands/handlers/MeigenCommandHandler';
 
 // Dependencies - Application layer
 import { GenerateStatusUseCase } from '../../application/use-cases/status/GenerateStatusUseCase';
@@ -74,4 +75,8 @@ export function createTableCommandHandler(): TableCommandHandler {
         (guild: Guild) => new CategoryManagementService(guild),
         (guild: Guild) => new ChannelLogService(guild)
     );
+}
+
+export function createMeigenCommandHandler(): MeigenCommandHandler {
+    return new MeigenCommandHandler();
 }

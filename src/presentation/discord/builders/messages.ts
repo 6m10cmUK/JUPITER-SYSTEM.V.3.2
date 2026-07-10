@@ -12,6 +12,12 @@ function createEmbed(source: Message | Interaction, title: string, name: string,
         )
 }
 
+function createDescriptionEmbed(source: Message | Interaction, title: string, description: string) {
+    return generateEmbed(source)
+        .setTitle(title)
+        .setDescription(description)
+}
+
 export function createSuccessMessage(source: Message | Interaction, title: string, description: string) {
     return {
         embeds: [
@@ -37,4 +43,23 @@ export function createInfoMessage(source: Message | Interaction, title: string, 
                 .setColor(0x0099ff)
         ]
     };
-} 
+}
+
+/**
+ * description を使う INFO メッセージを作成
+ * @param source Discord メッセージまたはインタラクション
+ * @param title タイトル
+ * @param description 本文
+ */
+export function createInfoDescriptionMessage(source: Message | Interaction, title: string, description: string) {
+    return {
+        embeds: [
+            createDescriptionEmbed(
+                source,
+                `ℹ️ INFO - [JUPITER-SYSTEM ${packageJson.version}] ${title}`,
+                description
+            )
+                .setColor(0x0099ff)
+        ]
+    };
+}

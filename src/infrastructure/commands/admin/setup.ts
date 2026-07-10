@@ -54,7 +54,8 @@ export async function execute(message: Message, guildId: string) {
             "roll",
             "status",
             "name",
-            "table"
+            "table",
+            "meigen"
         ]
     }
 

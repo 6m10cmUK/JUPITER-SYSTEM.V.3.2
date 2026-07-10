@@ -190,7 +190,7 @@ export class DiscordAdapter {
                     try {
                         await handleNameChangeModal(interaction);
                     } catch (error) {
-                        console.error(error);
+                        logError(interaction, error, 'modal');
                         await interaction.reply(
                             createErrorMessage(
                                 interaction,
@@ -205,7 +205,7 @@ export class DiscordAdapter {
                     try {
                         await handleCustomSetModal(interaction);
                     } catch (error) {
-                        console.error(error);
+                        logError(interaction, error, 'modal');
                         await interaction.reply(
                             createErrorMessage(
                                 interaction,
@@ -220,7 +220,7 @@ export class DiscordAdapter {
                     try {
                         await handleWordleGuessModal(interaction);
                     } catch (error) {
-                        console.error(error);
+                        logError(interaction, error, 'modal');
                         await interaction.reply(
                             createErrorMessage(
                                 interaction,

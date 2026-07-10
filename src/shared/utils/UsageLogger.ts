@@ -120,6 +120,7 @@ function formatUsageLine(label: string, source: LogSource, content: string): str
         `[${formatTimestamp(new Date())}]`,
         `[${sanitizeLogText(label)}]`,
         `[${formatGuild(source)}]`,
+        `[${formatChannel(source)}]`,
         `[${formatUser(source)}]`,
         sanitizeLogText(content)
     ].join(' ');
@@ -147,6 +148,24 @@ function formatGuild(source: LogSource): string {
     }
 
     return `guild=${sanitizeLogText(guild.name)}(${guild.id})`;
+}
+
+function formatChannel(source: LogSource): string {
+    const channel = source.channel;
+    if (!channel || channel.isDMBased()) {
+        return 'channel=DM';
+    }
+
+    if (!('name' in channel) || typeof channel.name !== 'string') {
+        return 'channel=DM';
+    }
+
+    const channelName = sanitizeLogText(channel.name);
+    const categoryName = 'parent' in channel && channel.parent ? sanitizeLogText(channel.parent.name) : null;
+
+    return categoryName
+        ? `channel=${categoryName}/${channelName}(${channel.id})`
+        : `channel=${channelName}(${channel.id})`;
 }
 
 function formatUser(source: LogSource): string {

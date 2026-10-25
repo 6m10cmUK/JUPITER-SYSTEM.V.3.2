@@ -175,29 +175,30 @@ describe('AudioMixer', () => {
     });
 
     test('実ストリームは入力停止中も無音を返しプリフィルなしで再開する', () => {
-        expect(mixer.readableHighWaterMark).toBe(FRAME_BYTES);
-        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.readableHighWaterMark).toBe(1);
+        expect(mixer.readableObjectMode).toBe(true);
+        expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
         mixer.pushPcm('a', pcmFrame(123));
-        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
         mixer.pushPcm('a', pcmFrame(456));
-        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(123));
-        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(456));
-        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.read()).toEqual(pcmFrame(123));
+        expect(mixer.read()).toEqual(pcmFrame(456));
+        expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
         expect(mixer.readableEnded).toBe(false);
         mixer.pushPcm('a', pcmFrame(789));
-        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(789));
+        expect(mixer.read()).toEqual(pcmFrame(789));
     });
 
     test('2ユーザーの到着がずれてもプリフィル後は毎フレーム加算する', () => {
         mixer.pushPcm('a', pcmFrame(100));
         mixer.pushPcm('b', pcmFrame(300));
-        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
         mixer.pushPcm('a', pcmFrame(100));
         mixer.pushPcm('b', pcmFrame(300));
-        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(400));
+        expect(mixer.read()).toEqual(pcmFrame(400));
         for (let i = 0; i < 10; i++) {
             mixer.pushPcm('a', pcmFrame(100));
-            expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(400));
+            expect(mixer.read()).toEqual(pcmFrame(400));
             mixer.pushPcm('b', pcmFrame(300));
         }
     });
@@ -216,4 +217,70 @@ describe('AudioMixer', () => {
         expect(onNonSilentFrame).toHaveBeenCalledTimes(1);
         mixer.destroy();
     });
+    test('readの回数を超える先読みは1フレーム以内に収まる', async () => {
+        const nextFrame = jest.spyOn(mixer, 'nextFrame');
+        for (let i = 1; i <= 30; i++) {
+            expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
+            await new Promise<void>(resolve => setImmediate(resolve));
+            expect(nextFrame.mock.calls.length).toBeGreaterThanOrEqual(i);
+            expect(nextFrame.mock.calls.length).toBeLessThanOrEqual(i + 1);
+            expect(mixer.readableLength).toBeLessThanOrEqual(1);
+        }
+    });
+
+    test('encodeしたパケットを返し非無音判定はPCMで行う', () => {
+        mixer.destroy();
+        const packet = Buffer.from([1, 2, 3]);
+        const encode = jest.fn(() => packet);
+        const onNonSilentFrame = jest.fn();
+        mixer = new AudioMixer({ encode, onNonSilentFrame });
+        expect(mixer.read()).toEqual(packet);
+        expect(encode).toHaveBeenLastCalledWith(Buffer.alloc(FRAME_BYTES));
+        expect(onNonSilentFrame).not.toHaveBeenCalled();
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(100), pcmFrame(200)]));
+        expect(mixer.read()).toEqual(packet);
+        expect(encode).toHaveBeenLastCalledWith(pcmFrame(100));
+        expect(onNonSilentFrame).toHaveBeenCalledTimes(1);
+    });
+
+    test('underrunsは開始済みかつ未終了の空キューだけを累計する', () => {
+        mixer.nextFrame();
+        mixer.pushPcm('a', pcmFrame(100));
+        mixer.nextFrame();
+        expect(mixer.stats().underruns).toBe(0);
+        mixer.pushPcm('a', pcmFrame(200));
+        mixer.nextFrame();
+        mixer.nextFrame();
+        mixer.nextFrame();
+        expect(mixer.stats().underruns).toBe(1);
+        mixer.nextFrame();
+        mixer.remove('a');
+        mixer.nextFrame();
+        expect(mixer.stats().underruns).toBe(2);
+    });
+
+    test('overflowDropsは累計しmaxQueueは取得時にリセットする', () => {
+        mixer.pushPcm('a', Buffer.concat(Array.from({ length: 12 }, () => pcmFrame(100))));
+        expect(mixer.stats()).toMatchObject({ overflowDrops: 2, maxQueue: 10 });
+        expect(mixer.stats()).toMatchObject({ overflowDrops: 2, maxQueue: 0 });
+        for (let i = 0; i < 10; i++) mixer.nextFrame();
+        mixer.pushPcm('a', pcmFrame(200));
+        expect(mixer.stats()).toMatchObject({ overflowDrops: 2, maxQueue: 1 });
+    });
+
+    test('maxReadIntervalMsは最大間隔を取得してリセットする', () => {
+        const now = jest.spyOn(Date, 'now');
+        jest.spyOn(mixer, 'push').mockReturnValue(false);
+        try {
+            now.mockReturnValue(0); mixer._read();
+            expect(mixer.stats().maxReadIntervalMs).toBe(0);
+            now.mockReturnValue(20); mixer._read();
+            now.mockReturnValue(400); mixer._read();
+            expect(mixer.stats().maxReadIntervalMs).toBe(380);
+            expect(mixer.stats().maxReadIntervalMs).toBe(0);
+            now.mockReturnValue(420); mixer._read();
+            expect(mixer.stats().maxReadIntervalMs).toBe(20);
+        } finally { now.mockRestore(); }
+    });
+
 });

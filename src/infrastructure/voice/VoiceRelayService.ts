@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { monitorEventLoopDelay } from 'node:perf_hooks';
+import type OpusScript from 'opusscript';
 import { Client, DiscordAPIError, Guild, PermissionFlagsBits, VoiceChannel, type VoiceState } from 'discord.js';
 import type { AudioPlayer, AudioReceiveStream, VoiceConnection } from '@discordjs/voice';
 import type prism from 'prism-media';
@@ -31,6 +33,8 @@ interface RelaySession extends RelayStatus {
     speaker?: VoiceConnection;
     player?: AudioPlayer;
     mixer?: AudioMixer;
+    encoder?: OpusScript;
+    eventLoopDelay?: ReturnType<typeof monitorEventLoopDelay>;
     subscriptions: Map<string, () => void>;
     started: boolean;
     detachSpeaking?: () => void;
@@ -83,6 +87,7 @@ export class VoiceRelayService {
         try {
             const voice = await import('@discordjs/voice');
             const { AudioMixer } = await import('./AudioMixer');
+            const { default: OpusScript } = await import('opusscript');
             const { getVoiceConnection, joinVoiceChannel, entersState, VoiceConnectionStatus,
                 createAudioPlayer, NoSubscriberBehavior, createAudioResource, StreamType } = voice;
             assertCurrent();
@@ -126,7 +131,9 @@ export class VoiceRelayService {
                 entersState(session.speaker, VoiceConnectionStatus.Ready, 15_000)
             ]);
             assertCurrent();
+            const encoder = session.encoder = new OpusScript(48000, 2, OpusScript.Application.AUDIO);
             const mixer = session.mixer = new AudioMixer({
+                encode: pcm => Buffer.from(encoder.encode(pcm, 960)),
                 onNonSilentFrame: session.diagnostics ? () => { session.diagnostics!.nonSilentFrames++; } : undefined
             });
             const player = session.player = createAudioPlayer({
@@ -134,8 +141,11 @@ export class VoiceRelayService {
                 behaviors: { noSubscriber: NoSubscriberBehavior.Play, maxMissedFrames: Infinity }
             });
             if (session.diagnostics) {
+                const eventLoopDelay = session.eventLoopDelay = monitorEventLoopDelay({ resolution: 10 });
+                eventLoopDelay.enable();
                 session.debugTimer = setInterval(() => {
-                    logSystem('voice-relay', `guild=${guild.id} diagnostics=${JSON.stringify(session.diagnostics)} player=${player.state.status} listener=${session.listener?.state.status} speaker=${session.speaker?.state.status}`);
+                    logSystem('voice-relay', `guild=${guild.id} diagnostics=${JSON.stringify(session.diagnostics)} player=${player.state.status} listener=${session.listener?.state.status} speaker=${session.speaker?.state.status} mixer=${JSON.stringify(mixer.stats())} eventLoopMaxMs=${eventLoopDelay.max / 1e6}`);
+                    eventLoopDelay.reset();
                 }, 5_000);
             }
             const fail = (error: Error) => {
@@ -146,7 +156,7 @@ export class VoiceRelayService {
             mixer.on('error', fail);
             player.on('error', fail);
             session.speaker.subscribe(player);
-            const resource = createAudioResource(mixer, { inputType: StreamType.Raw });
+            const resource = createAudioResource(mixer, { inputType: StreamType.Opus });
             resource.playStream.on('error', fail);
             player.play(resource);
             const onSpeaking = (userId: string) => {
@@ -291,11 +301,13 @@ export class VoiceRelayService {
         this.sessions.delete(guildId);
         if (session.emptyTimer) clearTimeout(session.emptyTimer);
         if (session.debugTimer) clearInterval(session.debugTimer);
+        this.releaseSafely(guildId, () => session.eventLoopDelay?.disable());
         this.releaseSafely(guildId, () => session.detachVoiceState?.());
         this.releaseSafely(guildId, () => session.detachSpeaking?.());
         for (const cleanup of session.subscriptions.values()) cleanup();
         this.releaseSafely(guildId, () => session.player?.stop(true));
         this.releaseSafely(guildId, () => session.mixer?.destroy());
+        this.releaseSafely(guildId, () => session.encoder?.delete());
         for (const connection of [session.listener, session.speaker]) {
             this.releaseSafely(guildId, () => {
                 if (connection && connection.state.status !== 'destroyed') connection.destroy();

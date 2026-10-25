@@ -1,9 +1,16 @@
+import { monitorEventLoopDelay } from 'node:perf_hooks';
+import OpusScript from 'opusscript';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import type { Client, Guild, VoiceChannel } from 'discord.js';
 import { DiscordAPIError, PermissionFlagsBits, PermissionsBitField } from 'discord.js';
 import { VoiceRelayService } from '../VoiceRelayService';
 import { logSystem } from '../../../shared/utils/UsageLogger';
+
+const mockEncoder = { encode: jest.fn(() => Buffer.from([1, 2, 3])), delete: jest.fn() };
+const mockEventLoopDelay = { enable: jest.fn(), disable: jest.fn(), reset: jest.fn(), max: 25_000_000 };
+jest.mock('opusscript', () => Object.assign(jest.fn(() => mockEncoder), { Application: { AUDIO: 2049 } }));
+jest.mock('node:perf_hooks', () => ({ monitorEventLoopDelay: jest.fn(() => mockEventLoopDelay) }));
 
 jest.mock('../../../shared/utils/UsageLogger', () => ({ logSystem: jest.fn() }));
 const mockConnections: ReturnType<typeof connection>[] = [];
@@ -21,7 +28,7 @@ jest.mock('@discordjs/voice', () => ({
     getVoiceConnection: jest.fn(), entersState: jest.fn().mockResolvedValue(undefined),
     VoiceConnectionStatus: { Ready: 'ready', Disconnected: 'disconnected', Destroyed: 'destroyed', Signalling: 'signalling', Connecting: 'connecting' },
     createAudioPlayer: jest.fn(() => mockPlayer), NoSubscriberBehavior: { Play: 'play' },
-    createAudioResource: () => ({ playStream: mockResource }), StreamType: { Raw: 'raw' }, EndBehaviorType: { AfterSilence: 'silence' }
+    createAudioResource: jest.fn(() => ({ playStream: mockResource })), StreamType: { Opus: 'opus' }, EndBehaviorType: { AfterSilence: 'silence' }
 }));
 
 function fixture() {
@@ -135,6 +142,7 @@ test.each([undefined, '0'])('debug=%s does not attach diagnostics', async value 
         await f.start();
         expect(mockConnections[0].listenerCount('debug')).toBe(0);
         expect(mockPlayer.listenerCount('debug')).toBe(0);
+        expect(monitorEventLoopDelay).not.toHaveBeenCalled();
         jest.advanceTimersByTime(5_000);
         expect(logSystem).not.toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics='));
     } finally {
@@ -161,7 +169,7 @@ test('debug logs cumulative pipeline counts, bot decisions, states and errors, t
         stream.write(Buffer.alloc(3840 * 2, 1));
         // The mocked resource does not consume the mixer, so request a frame explicitly.
         const session = await Promise.resolve((f.service as any).sessions.get('guild'));
-        session.mixer.read(3840);
+        session.mixer.read();
         mockDecoders[mockDecoders.length - 1].emit('error', new Error('decode failed'));
         for (const emitter of [...mockConnections, mockPlayer]) {
             expect(emitter.listenerCount('debug')).toBe(0);
@@ -172,8 +180,18 @@ test('debug logs cumulative pipeline counts, bot decisions, states and errors, t
         expect(logSystem).not.toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics='));
         jest.advanceTimersByTime(1);
         expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics={"speakingStarts":2,"subscriptions":1,"opusPackets":1,"pcmChunks":1,"pcmBytes":7680,"decoderErrors":1,"nonSilentFrames":1} player=playing listener=ready speaker=ready'));
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringMatching(/mixer=\{"underruns":0,"overflowDrops":0,"maxQueue":2,"maxReadIntervalMs":0\} eventLoopMaxMs=25$/));
+        expect(monitorEventLoopDelay).toHaveBeenCalledWith({ resolution: 10 });
+        expect(mockEventLoopDelay.enable).toHaveBeenCalledTimes(1);
+        expect(mockEventLoopDelay.reset).toHaveBeenCalledTimes(1);
         expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('decoder error: decode failed'));
+        jest.mocked(logSystem).mockClear();
+        jest.advanceTimersByTime(5_000);
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('"nonSilentFrames":1}'));
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringMatching(/mixer=.*"maxQueue":0,.* eventLoopMaxMs=25$/));
+        expect(mockEventLoopDelay.reset).toHaveBeenCalledTimes(2);
         f.service.stop('guild');
+        expect(mockEventLoopDelay.disable).toHaveBeenCalledTimes(1);
         expect(mockConnections[0].listenerCount('debug')).toBe(0);
         expect(mockPlayer.listenerCount('debug')).toBe(0);
         jest.mocked(logSystem).mockClear();
@@ -335,4 +353,24 @@ test('main logs in the main client before starting a potentially stalled speaker
     for (let i = 0; i < 5; i++) await Promise.resolve();
     expect(calls).toEqual(['main', 'speaker']);
     expect(exit).not.toHaveBeenCalled();
+});
+test('resource consumes Opus packets and stop deletes the encoder once', async () => {
+    const { createAudioResource } = await import('@discordjs/voice');
+    const f = fixture(); await f.start();
+    expect(OpusScript).toHaveBeenCalledWith(48000, 2, OpusScript.Application.AUDIO);
+    expect(createAudioResource).toHaveBeenCalledWith(expect.anything(), { inputType: 'opus' });
+    const mixer = jest.mocked(createAudioResource).mock.calls[0][0] as import('../AudioMixer').AudioMixer;
+    expect(mixer.read()).toEqual(Buffer.from([1, 2, 3]));
+    expect(mockEncoder.encode).toHaveBeenCalledWith(Buffer.alloc(3840), 960);
+    f.service.stop('guild');
+    f.service.stop('guild');
+    expect(mixer.destroyed).toBe(true);
+    expect(mockEncoder.delete).toHaveBeenCalledTimes(1);
+});
+
+test('startup failure after encoder creation releases the encoder', async () => {
+    mockPlayer.play.mockImplementationOnce(() => { throw new Error('play failed'); });
+    const f = fixture();
+    await expect(f.start()).rejects.toThrow('play failed');
+    expect(mockEncoder.delete).toHaveBeenCalledTimes(1);
 });

@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from './infrastructure/websocket/WebSocketServer';
 import { NotificationScheduler } from './infrastructure/services/NotificationScheduler';
 import { logError, logSystem } from './shared/utils/UsageLogger';
+import { initRelaySpeaker } from './infrastructure/voice/initRelaySpeaker';
 dotenv.config();
 
 function formatErrorMessage(error: unknown): string {
@@ -64,6 +65,7 @@ async function main() {
         intents: [
             GatewayIntentBits.Guilds,
             GatewayIntentBits.GuildMessages,
+            GatewayIntentBits.GuildVoiceStates,
             GatewayIntentBits.MessageContent
         ]
     });
@@ -123,6 +125,7 @@ async function main() {
     });
 
     await client.login(DISCORD_TOKEN);
+    await initRelaySpeaker();
 }
 
 main().catch((err: unknown) => {

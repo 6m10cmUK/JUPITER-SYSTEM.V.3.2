@@ -61,7 +61,10 @@ export class AudioMixer extends Readable {
             if (!user.started && (user.frames.length >= PREFILL_FRAMES || user.ended)) user.started = true;
             const frame = user.started ? user.frames.shift() : undefined;
             if (frame) frames.push(frame);
-            else if (user.started && !user.ended) this.underruns++;
+            else if (user.started && !user.ended) {
+                this.underruns++;
+                user.started = false;
+            }
             if (user.ended && user.frames.length === 0) this.users.delete(userId);
         }
         for (let offset = 0; offset < FRAME_BYTES; offset += 2) {

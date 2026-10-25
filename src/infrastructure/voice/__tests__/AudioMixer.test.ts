@@ -174,7 +174,7 @@ describe('AudioMixer', () => {
         expect(mixer['users'].has('b')).toBe(false);
     });
 
-    test('実ストリームは入力停止中も無音を返しプリフィルなしで再開する', () => {
+    test('実ストリームは入力停止後にプリフィルして再開する', () => {
         expect(mixer.readableHighWaterMark).toBe(1);
         expect(mixer.readableObjectMode).toBe(true);
         expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
@@ -186,7 +186,10 @@ describe('AudioMixer', () => {
         expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
         expect(mixer.readableEnded).toBe(false);
         mixer.pushPcm('a', pcmFrame(789));
+        expect(mixer.read()).toEqual(Buffer.alloc(FRAME_BYTES));
+        mixer.pushPcm('a', pcmFrame(900));
         expect(mixer.read()).toEqual(pcmFrame(789));
+        expect(mixer.read()).toEqual(pcmFrame(900));
     });
 
     test('2ユーザーの到着がずれてもプリフィル後は毎フレーム加算する', () => {
@@ -256,6 +259,23 @@ describe('AudioMixer', () => {
         mixer.nextFrame();
         mixer.remove('a');
         mixer.nextFrame();
+        expect(mixer.stats().underruns).toBe(1);
+    });
+
+    test('空キュー後は2フレーム溜め直すまで無音でunderrunsも増えない', () => {
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(100), pcmFrame(200)]));
+        mixer.nextFrame();
+        mixer.nextFrame();
+        expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.stats().underruns).toBe(1);
+        for (let i = 0; i < 10; i++) expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
+        mixer.pushPcm('a', pcmFrame(300));
+        for (let i = 0; i < 10; i++) expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.stats().underruns).toBe(1);
+        mixer.pushPcm('a', pcmFrame(400));
+        expect(mixer.nextFrame()).toEqual(pcmFrame(300));
+        expect(mixer.nextFrame()).toEqual(pcmFrame(400));
+        expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
         expect(mixer.stats().underruns).toBe(2);
     });
 

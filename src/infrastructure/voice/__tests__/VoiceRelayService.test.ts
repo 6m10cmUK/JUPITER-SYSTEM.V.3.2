@@ -1,4 +1,4 @@
-import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { monitorEventLoopDelay, PerformanceObserver } from 'node:perf_hooks';
 import OpusScript from 'opusscript';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
@@ -10,7 +10,11 @@ import { logSystem } from '../../../shared/utils/UsageLogger';
 const mockEncoder = { encode: jest.fn(() => Buffer.from([1, 2, 3])), delete: jest.fn() };
 const mockEventLoopDelay = { enable: jest.fn(), disable: jest.fn(), reset: jest.fn(), max: 25_000_000 };
 jest.mock('opusscript', () => Object.assign(jest.fn(() => mockEncoder), { Application: { AUDIO: 2049 } }));
-jest.mock('node:perf_hooks', () => ({ monitorEventLoopDelay: jest.fn(() => mockEventLoopDelay) }));
+const mockGcObserver = { observe: jest.fn(), disconnect: jest.fn() };
+jest.mock('node:perf_hooks', () => ({
+    monitorEventLoopDelay: jest.fn(() => mockEventLoopDelay),
+    PerformanceObserver: jest.fn(() => mockGcObserver)
+}));
 
 jest.mock('../../../shared/utils/UsageLogger', () => ({ logSystem: jest.fn() }));
 const mockConnections: ReturnType<typeof connection>[] = [];
@@ -28,7 +32,7 @@ jest.mock('@discordjs/voice', () => ({
     getVoiceConnection: jest.fn(), entersState: jest.fn().mockResolvedValue(undefined),
     VoiceConnectionStatus: { Ready: 'ready', Disconnected: 'disconnected', Destroyed: 'destroyed', Signalling: 'signalling', Connecting: 'connecting' },
     createAudioPlayer: jest.fn(() => mockPlayer), NoSubscriberBehavior: { Play: 'play' },
-    createAudioResource: jest.fn(() => ({ playStream: mockResource })), StreamType: { Opus: 'opus' }, EndBehaviorType: { AfterSilence: 'silence' }
+    createAudioResource: jest.fn(() => ({ playStream: mockResource })), StreamType: { Opus: 'opus' }, EndBehaviorType: { Manual: 'manual' }
 }));
 
 function fixture() {
@@ -43,11 +47,11 @@ function fixture() {
         channels: { fetch: jest.fn().mockResolvedValue(speakerChannel) }
     };
     const speaker = { isReady: () => true, user: { id: 'speaker' }, guilds: { fetch: jest.fn().mockResolvedValue(speakerGuild) } };
-    const client = Object.assign(new EventEmitter(), { users: { cache: new Map([['human', { bot: false }], ['bot', { bot: true }]]) } });
+    const client = Object.assign(new EventEmitter(), { users: { cache: new Map([['human', { bot: false }], ['bot', { bot: true }]]), fetch: jest.fn().mockResolvedValue({ bot: false }) } });
     const service = new VoiceRelayService();
     service.setSpeakerClient(speaker as unknown as Client);
     const start = () => service.start({ guild: guild as unknown as Guild, from: from as unknown as VoiceChannel,
-        to: to as unknown as VoiceChannel, listenerClient: client as Client, startedBy: 'starter' });
+        to: to as unknown as VoiceChannel, listenerClient: client as unknown as Client, startedBy: 'starter' });
     const update = () => client.emit('voiceStateUpdate', { channelId: 'from' }, { channelId: null });
     return { service, members, send, client, speaker, speakerChannel, start, update };
 }
@@ -143,6 +147,7 @@ test.each([undefined, '0'])('debug=%s does not attach diagnostics', async value 
         expect(mockConnections[0].listenerCount('debug')).toBe(0);
         expect(mockPlayer.listenerCount('debug')).toBe(0);
         expect(monitorEventLoopDelay).not.toHaveBeenCalled();
+        expect(PerformanceObserver).not.toHaveBeenCalled();
         jest.advanceTimersByTime(5_000);
         expect(logSystem).not.toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics='));
     } finally {
@@ -176,22 +181,28 @@ test('debug logs cumulative pipeline counts, bot decisions, states and errors, t
             emitter.emit('debug', 'secret_key=synthetic-secret token=synthetic-token');
         }
         expect(logSystem).not.toHaveBeenCalledWith('voice-relay', expect.stringContaining('synthetic-'));
+        expect(mockGcObserver.observe).toHaveBeenCalledWith({ entryTypes: ['gc'] });
+        const onGc = jest.mocked(PerformanceObserver).mock.calls[0][0];
+        onGc({ getEntries: () => [{ duration: 2 }, { duration: 5 }] } as any, mockGcObserver as any);
         jest.advanceTimersByTime(4_999);
         expect(logSystem).not.toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics='));
         jest.advanceTimersByTime(1);
         expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics={"speakingStarts":2,"subscriptions":1,"opusPackets":1,"pcmChunks":1,"pcmBytes":7680,"decoderErrors":1,"nonSilentFrames":1} player=playing listener=ready speaker=ready'));
-        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringMatching(/mixer=\{"underruns":0,"overflowDrops":0,"maxQueue":2,"maxReadIntervalMs":0\} eventLoopMaxMs=25$/));
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringMatching(/mixer=\{"underruns":0,"overflowDrops":0,"maxQueue":2,"maxReadIntervalMs":0\} eventLoopMaxMs=25 gc=.*$/));
         expect(monitorEventLoopDelay).toHaveBeenCalledWith({ resolution: 10 });
         expect(mockEventLoopDelay.enable).toHaveBeenCalledTimes(1);
         expect(mockEventLoopDelay.reset).toHaveBeenCalledTimes(1);
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('gc={"count":2,"maxMs":5,"totalMs":7}'));
         expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('decoder error: decode failed'));
         jest.mocked(logSystem).mockClear();
         jest.advanceTimersByTime(5_000);
         expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('"nonSilentFrames":1}'));
-        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringMatching(/mixer=.*"maxQueue":0,.* eventLoopMaxMs=25$/));
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringMatching(/mixer=.*"maxQueue":0,.* eventLoopMaxMs=25 gc=.*$/));
         expect(mockEventLoopDelay.reset).toHaveBeenCalledTimes(2);
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('gc={"count":0,"maxMs":0,"totalMs":0}'));
         f.service.stop('guild');
         expect(mockEventLoopDelay.disable).toHaveBeenCalledTimes(1);
+        expect(mockGcObserver.disconnect).toHaveBeenCalledTimes(1);
         expect(mockConnections[0].listenerCount('debug')).toBe(0);
         expect(mockPlayer.listenerCount('debug')).toBe(0);
         jest.mocked(logSystem).mockClear();
@@ -292,7 +303,7 @@ test('speaker login failure is distinct from unconfigured', async () => {
         await initRelaySpeaker();
         expect(login).not.toHaveBeenCalled();
         const f = fixture();
-        const args = { guild: { id: 'guild' } as Guild, from: {} as VoiceChannel, to: {} as VoiceChannel, listenerClient: f.client as Client, startedBy: 'starter' };
+        const args = { guild: { id: 'guild' } as Guild, from: {} as VoiceChannel, to: {} as VoiceChannel, listenerClient: f.client as unknown as Client, startedBy: 'starter' };
         await expect(getVoiceRelayService().start(args)).rejects.toThrow('未設定');
         process.env.JUPITER_RELAY_SPEAKER_TOKEN = 'test-token';
         await initRelaySpeaker();
@@ -373,4 +384,74 @@ test('startup failure after encoder creation releases the encoder', async () => 
     const f = fixture();
     await expect(f.start()).rejects.toThrow('play failed');
     expect(mockEncoder.delete).toHaveBeenCalledTimes(1);
+});
+
+test('speaking start subscribes synchronously with Manual and keeps the first packet across silence', async () => {
+    const f = fixture(); await f.start();
+    const receiver = mockConnections[0].receiver;
+    const stream = new PassThrough();
+    receiver.subscribe.mockReturnValue(stream);
+    receiver.speaking.on('start', () => {
+        expect(receiver.subscribe).toHaveBeenCalledWith('human', { end: { behavior: 'manual' } });
+        stream.write(Buffer.alloc(3840, 1));
+    });
+    receiver.speaking.emit('start', 'human');
+    expect(mockDecoders[mockDecoders.length - 1].readableLength).toBe(0);
+    const session = (f.service as any).sessions.get('guild');
+    expect(session.mixer.stats().maxQueue).toBe(1);
+    jest.advanceTimersByTime(150);
+    stream.write(Buffer.alloc(3840, 1));
+    expect(session.mixer.nextFrame()).toEqual(Buffer.alloc(3840, 1));
+    receiver.speaking.emit('start', 'human');
+    expect(receiver.subscribe).toHaveBeenCalledTimes(1);
+    expect(stream.destroyed).toBe(false);
+    f.service.stop('guild');
+    expect(stream.destroyed).toBe(true);
+});
+
+test('cached bots never subscribe', async () => {
+    const f = fixture(); await f.start();
+    mockConnections[0].receiver.speaking.emit('start', 'bot');
+    expect(mockConnections[0].receiver.subscribe).not.toHaveBeenCalled();
+    expect(f.client.users.fetch).not.toHaveBeenCalled();
+    f.service.stop('guild');
+});
+
+test.each(['human', 'bot', 'failure'])('uncached user subscribes before fetch resolves as %s', async result => {
+    const f = fixture(); await f.start();
+    let resolve!: (user: { bot: boolean }) => void;
+    let reject!: (error: Error) => void;
+    f.client.users.fetch.mockReturnValue(new Promise((ok, fail) => { resolve = ok; reject = fail; }));
+    const stream = new PassThrough();
+    mockConnections[0].receiver.subscribe.mockReturnValue(stream);
+    mockConnections[0].receiver.speaking.emit('start', 'unknown');
+    expect(mockConnections[0].receiver.subscribe).toHaveBeenCalledTimes(1);
+    expect(stream.destroyed).toBe(false);
+    if (result === 'failure') reject(new Error('fetch failed'));
+    else resolve({ bot: result === 'bot' });
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(stream.destroyed).toBe(result === 'bot');
+    if (result === 'failure') expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('fetch failed'));
+    f.service.stop('guild');
+});
+
+test('only departure from source cleans the user subscription and drains queued PCM', async () => {
+    const f = fixture(); await f.start();
+    const stream = new PassThrough();
+    const receiver = mockConnections[0].receiver;
+    receiver.subscribe.mockReturnValue(stream);
+    receiver.speaking.emit('start', 'human');
+    const decoder = mockDecoders[mockDecoders.length - 1];
+    stream.write(Buffer.alloc(3840, 1));
+    const session = (f.service as any).sessions.get('guild');
+    f.client.emit('voiceStateUpdate', { id: 'human', channelId: 'from' }, { channelId: 'from' });
+    f.client.emit('voiceStateUpdate', { id: 'human', channelId: 'other' }, { channelId: null });
+    expect(stream.destroyed).toBe(false);
+    f.client.emit('voiceStateUpdate', { id: 'human', channelId: 'from' }, { channelId: 'other' });
+    expect(stream.destroyed).toBe(true);
+    expect(decoder.destroyed).toBe(true);
+    expect(session.subscriptions.has('human')).toBe(false);
+    expect(session.mixer.nextFrame()).toEqual(Buffer.alloc(3840, 1));
+    expect(session.mixer.nextFrame()).toEqual(Buffer.alloc(3840));
+    f.service.stop('guild');
 });

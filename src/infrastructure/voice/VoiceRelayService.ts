@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { monitorEventLoopDelay, PerformanceObserver } from 'node:perf_hooks';
 import type OpusScript from 'opusscript';
 import { Client, DiscordAPIError, Guild, PermissionFlagsBits, VoiceChannel, type VoiceState } from 'discord.js';
 import type { AudioPlayer, AudioReceiveStream, VoiceConnection } from '@discordjs/voice';
@@ -35,6 +35,7 @@ interface RelaySession extends RelayStatus {
     mixer?: AudioMixer;
     encoder?: OpusScript;
     eventLoopDelay?: ReturnType<typeof monitorEventLoopDelay>;
+    gcObserver?: PerformanceObserver;
     subscriptions: Map<string, () => void>;
     started: boolean;
     detachSpeaking?: () => void;
@@ -86,10 +87,11 @@ export class VoiceRelayService {
         };
         try {
             const voice = await import('@discordjs/voice');
+            const { default: prism } = await import('prism-media');
             const { AudioMixer } = await import('./AudioMixer');
             const { default: OpusScript } = await import('opusscript');
             const { getVoiceConnection, joinVoiceChannel, entersState, VoiceConnectionStatus,
-                createAudioPlayer, NoSubscriberBehavior, createAudioResource, StreamType } = voice;
+                createAudioPlayer, NoSubscriberBehavior, createAudioResource, StreamType, EndBehaviorType } = voice;
             assertCurrent();
             const speakerGuild = await speakerClient.guilds.fetch(guild.id).catch((error: unknown) => {
                 if (!(error instanceof DiscordAPIError) || ![10004, 50001].includes(Number(error.code))) throw error;
@@ -143,9 +145,19 @@ export class VoiceRelayService {
             if (session.diagnostics) {
                 const eventLoopDelay = session.eventLoopDelay = monitorEventLoopDelay({ resolution: 10 });
                 eventLoopDelay.enable();
+                let gc = { count: 0, maxMs: 0, totalMs: 0 };
+                const gcObserver = session.gcObserver = new PerformanceObserver(list => {
+                    for (const entry of list.getEntries()) {
+                        gc.count++;
+                        gc.maxMs = Math.max(gc.maxMs, entry.duration);
+                        gc.totalMs += entry.duration;
+                    }
+                });
+                gcObserver.observe({ entryTypes: ['gc'] });
                 session.debugTimer = setInterval(() => {
-                    logSystem('voice-relay', `guild=${guild.id} diagnostics=${JSON.stringify(session.diagnostics)} player=${player.state.status} listener=${session.listener?.state.status} speaker=${session.speaker?.state.status} mixer=${JSON.stringify(mixer.stats())} eventLoopMaxMs=${eventLoopDelay.max / 1e6}`);
+                    logSystem('voice-relay', `guild=${guild.id} diagnostics=${JSON.stringify(session.diagnostics)} player=${player.state.status} listener=${session.listener?.state.status} speaker=${session.speaker?.state.status} mixer=${JSON.stringify(mixer.stats())} eventLoopMaxMs=${eventLoopDelay.max / 1e6} gc=${JSON.stringify(gc)}`);
                     eventLoopDelay.reset();
+                    gc = { count: 0, maxMs: 0, totalMs: 0 };
                 }, 5_000);
             }
             const fail = (error: Error) => {
@@ -161,11 +173,14 @@ export class VoiceRelayService {
             player.play(resource);
             const onSpeaking = (userId: string) => {
                 if (session.diagnostics) session.diagnostics.speakingStarts++;
-                void this.subscribe(guild.id, session, listenerClient, userId);
+                this.subscribe(guild.id, session, listenerClient, userId, EndBehaviorType.Manual, prism);
             };
             session.listener.receiver.speaking.on('start', onSpeaking);
             session.detachSpeaking = () => session.listener?.receiver.speaking.off('start', onSpeaking);
             const onVoiceState = (oldState: VoiceState, newState: VoiceState) => {
+                if (oldState.channelId === from.id && newState.channelId !== from.id) {
+                    session.subscriptions.get(oldState.id)?.();
+                }
                 if (oldState.channelId === from.id || newState.channelId === from.id) {
                     this.updateEmptyTimer(guild.id, session);
                 }
@@ -183,7 +198,8 @@ export class VoiceRelayService {
         }
     }
 
-    private async subscribe(guildId: string, session: RelaySession, client: Client, userId: string): Promise<void> {
+    private subscribe(guildId: string, session: RelaySession, client: Client, userId: string,
+        endBehavior: import('@discordjs/voice').EndBehaviorType.Manual, prism: typeof import('prism-media')): void {
         let stream: AudioReceiveStream | undefined;
         let decoder: prism.opus.Decoder | undefined;
         let cleaned = false;
@@ -198,16 +214,14 @@ export class VoiceRelayService {
             }
         };
         try {
-            const { EndBehaviorType } = await import('@discordjs/voice');
-            const { default: prism } = await import('prism-media');
-            const user = client.users.cache.get(userId) ?? await client.users.fetch(userId);
+            const user = client.users.cache.get(userId);
             if (session.diagnostics) {
-                logSystem('voice-relay', `guild=${guildId} speaking start userId=${userId} bot=${user.bot}`);
+                logSystem('voice-relay', `guild=${guildId} speaking start userId=${userId} bot=${user?.bot ?? 'unknown'}`);
             }
-            if (user.bot || this.sessions.get(guildId) !== session ||
+            if (user?.bot || this.sessions.get(guildId) !== session ||
                 session.subscriptions.has(userId)) return;
             stream = session.listener!.receiver.subscribe(userId, {
-                end: { behavior: EndBehaviorType.AfterSilence, duration: 100 }
+                end: { behavior: endBehavior }
             });
             if (session.diagnostics) {
                 session.diagnostics.subscriptions++;
@@ -240,6 +254,13 @@ export class VoiceRelayService {
                 } catch (error) { onError(error instanceof Error ? error : new Error(String(error))); }
             });
             stream.pipe(decoder);
+            if (!user) {
+                void Promise.resolve().then(() => client.users.fetch(userId)).then(user => {
+                    if (user.bot) cleanup();
+                }).catch(error => {
+                    logSystem('voice-relay', `guild=${guildId} user=${userId} fetch error: ${String(error)}`);
+                });
+            }
         } catch (error) {
             cleanup();
             logSystem('voice-relay', `guild=${guildId} user=${userId} error: ${error instanceof Error ? error.message : String(error)}`);
@@ -302,6 +323,7 @@ export class VoiceRelayService {
         if (session.emptyTimer) clearTimeout(session.emptyTimer);
         if (session.debugTimer) clearInterval(session.debugTimer);
         this.releaseSafely(guildId, () => session.eventLoopDelay?.disable());
+        this.releaseSafely(guildId, () => session.gcObserver?.disconnect());
         this.releaseSafely(guildId, () => session.detachVoiceState?.());
         this.releaseSafely(guildId, () => session.detachSpeaking?.());
         for (const cleanup of session.subscriptions.values()) cleanup();

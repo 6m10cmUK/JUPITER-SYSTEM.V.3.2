@@ -158,7 +158,7 @@ test('debug logs cumulative pipeline counts, bot decisions, states and errors, t
         expect(mockConnections[0].receiver.subscribe).toHaveBeenCalledTimes(1);
         expect(logSystem).toHaveBeenCalledWith('voice-relay', 'guild=guild speaking start userId=human bot=false');
         expect(logSystem).toHaveBeenCalledWith('voice-relay', 'guild=guild speaking start userId=bot bot=true');
-        stream.write(Buffer.alloc(3840, 1));
+        stream.write(Buffer.alloc(3840 * 2, 1));
         // The mocked resource does not consume the mixer, so request a frame explicitly.
         const session = await Promise.resolve((f.service as any).sessions.get('guild'));
         session.mixer.read(3840);
@@ -171,7 +171,7 @@ test('debug logs cumulative pipeline counts, bot decisions, states and errors, t
         jest.advanceTimersByTime(4_999);
         expect(logSystem).not.toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics='));
         jest.advanceTimersByTime(1);
-        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics={"speakingStarts":2,"subscriptions":1,"opusPackets":1,"pcmChunks":1,"pcmBytes":3840,"decoderErrors":1,"nonSilentFrames":1} player=playing listener=ready speaker=ready'));
+        expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('diagnostics={"speakingStarts":2,"subscriptions":1,"opusPackets":1,"pcmChunks":1,"pcmBytes":7680,"decoderErrors":1,"nonSilentFrames":1} player=playing listener=ready speaker=ready'));
         expect(logSystem).toHaveBeenCalledWith('voice-relay', expect.stringContaining('decoder error: decode failed'));
         f.service.stop('guild');
         expect(mockConnections[0].listenerCount('debug')).toBe(0);

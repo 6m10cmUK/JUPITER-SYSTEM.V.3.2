@@ -22,27 +22,28 @@ describe('AudioMixer', () => {
 
     test('単一ユーザーのPCMをそのまま返す', () => {
         const frame = pcmFrame(1234, -5678);
-        mixer.pushPcm('a', frame);
+        mixer.pushPcm('a', Buffer.concat([frame, frame]));
+        expect(mixer.nextFrame()).toEqual(frame);
         expect(mixer.nextFrame()).toEqual(frame);
         expect(mixer.nextFrame()).toEqual(Buffer.alloc(3840));
     });
 
     test('2ユーザーの各チャンネルを加算する', () => {
-        mixer.pushPcm('a', pcmFrame(1000, -2000));
-        mixer.pushPcm('b', pcmFrame(3000, 500));
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(1000, -2000), pcmFrame(1000, -2000)]));
+        mixer.pushPcm('b', Buffer.concat([pcmFrame(3000, 500), pcmFrame(3000, 500)]));
         expect(mixer.nextFrame()).toEqual(pcmFrame(4000, -1500));
     });
 
     test('正負の上限でクリップする', () => {
-        mixer.pushPcm('a', pcmFrame(30000, -30000));
-        mixer.pushPcm('b', pcmFrame(10000, -10000));
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(30000, -30000), pcmFrame(30000, -30000)]));
+        mixer.pushPcm('b', Buffer.concat([pcmFrame(10000, -10000), pcmFrame(10000, -10000)]));
         expect(mixer.nextFrame()).toEqual(pcmFrame(32767, -32768));
     });
 
     test('全ユーザーを加算してからクリップする', () => {
-        mixer.pushPcm('a', pcmFrame(30000, -30000));
-        mixer.pushPcm('b', pcmFrame(10000, -10000));
-        mixer.pushPcm('c', pcmFrame(-20000, 20000));
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(30000, -30000), pcmFrame(30000, -30000)]));
+        mixer.pushPcm('b', Buffer.concat([pcmFrame(10000, -10000), pcmFrame(10000, -10000)]));
+        mixer.pushPcm('c', Buffer.concat([pcmFrame(-20000, 20000), pcmFrame(-20000, 20000)]));
         expect(mixer.nextFrame()).toEqual(pcmFrame(20000, -20000));
     });
 
@@ -54,7 +55,7 @@ describe('AudioMixer', () => {
     test('ユーザーごとに奇数byteの端数と複数フレームを保持する', () => {
         const frames = Buffer.concat([pcmFrame(100), pcmFrame(200)]);
         mixer.pushPcm('a', frames.subarray(0, 1));
-        mixer.pushPcm('b', pcmFrame(300));
+        mixer.pushPcm('b', Buffer.concat([pcmFrame(300), pcmFrame(0)]));
         expect(mixer.nextFrame()).toEqual(pcmFrame(300));
         mixer.pushPcm('a', frames.subarray(1));
         expect(mixer.nextFrame()).toEqual(pcmFrame(100));
@@ -71,7 +72,7 @@ describe('AudioMixer', () => {
 
     test('remove後も残ったフレームを出力し、流し切ったユーザーだけを消す', () => {
         mixer.pushPcm('a', Buffer.concat([pcmFrame(100), pcmFrame(200), Buffer.alloc(1, 1)]));
-        mixer.pushPcm('b', pcmFrame(300));
+        mixer.pushPcm('b', Buffer.concat([pcmFrame(300), pcmFrame(0)]));
         mixer.remove('a');
         mixer.remove('unknown');
         expect(mixer.nextFrame()).toEqual(pcmFrame(400));
@@ -80,7 +81,10 @@ describe('AudioMixer', () => {
         expect(mixer['users'].has('a')).toBe(false);
         expect(mixer['users'].has('b')).toBe(true);
         mixer.pushPcm('a', pcmFrame(500));
+        expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
+        mixer.pushPcm('a', pcmFrame(600));
         expect(mixer.nextFrame()).toEqual(pcmFrame(500));
+        expect(mixer.nextFrame()).toEqual(pcmFrame(600));
         expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
     });
 
@@ -97,21 +101,23 @@ describe('AudioMixer', () => {
     });
 
     test('キューが空のユーザーも終了マーク後の排出処理で消す', () => {
-        mixer.pushPcm('a', pcmFrame(100));
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(100), pcmFrame(200)]));
+        mixer.nextFrame();
         mixer.nextFrame();
         mixer.remove('a');
         expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
         expect(mixer['users'].has('a')).toBe(false);
     });
 
-    test('_readはフレームがある間だけpushする', () => {
+    test('_readは呼び出しごとに1フレームpushする', () => {
         const push = jest.spyOn(mixer, 'push').mockReturnValue(true);
         mixer.pushPcm('a', pcmFrame(100));
         mixer.pushPcm('a', pcmFrame(200));
         mixer._read();
         mixer._read();
         mixer._read();
-        expect(push).toHaveBeenCalledTimes(2);
+        expect(push).toHaveBeenCalledTimes(3);
+        expect(push).toHaveBeenNthCalledWith(3, Buffer.alloc(FRAME_BYTES));
         expect(push).toHaveBeenNthCalledWith(1, pcmFrame(100));
         expect(push).toHaveBeenNthCalledWith(2, pcmFrame(200));
         push.mockRestore();
@@ -125,40 +131,83 @@ describe('AudioMixer', () => {
         expect(mixer.nextFrame()).toEqual(Buffer.alloc(3840));
     });
 
-    test('待機中は完全なフレームが揃ったときだけ1フレームpushする', () => {
+    test('_readは入力がなくても無音フレームを1つpushする', () => {
         const push = jest.spyOn(mixer, 'push').mockReturnValue(false);
         mixer._read();
-        mixer.pushPcm('a', Buffer.alloc(1000));
-        expect(push).not.toHaveBeenCalled();
-        mixer.pushPcm('a', Buffer.alloc(FRAME_BYTES - 1000));
         expect(push).toHaveBeenCalledTimes(1);
-        mixer.pushPcm('b', Buffer.alloc(FRAME_BYTES));
-        expect(push).toHaveBeenCalledTimes(1);
-        mixer._read();
-        expect(push).toHaveBeenCalledTimes(2);
-        mixer._read();
-        mixer.destroy();
-        mixer.pushPcm('a', Buffer.alloc(FRAME_BYTES));
-        expect(push).toHaveBeenCalledTimes(2);
+        expect(push).toHaveBeenCalledWith(Buffer.alloc(FRAME_BYTES));
     });
 
-    test('実ストリームは入力停止後も終了せず再開する', () => {
-        expect(mixer.read(FRAME_BYTES)).toBeNull();
-        mixer.pushPcm('a', pcmFrame(123));
-        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(123));
-        expect(mixer.read(FRAME_BYTES)).toBeNull();
-        expect(mixer.readableEnded).toBe(false);
-        mixer.pushPcm('a', pcmFrame(456));
-        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(456));
+    test('pushPcmは端数やフレームが揃ってもpushしない', () => {
+        const push = jest.spyOn(mixer, 'push').mockReturnValue(false);
+        mixer._read();
+        push.mockClear();
+        mixer.pushPcm('a', Buffer.alloc(1000));
+        mixer.pushPcm('a', Buffer.alloc(FRAME_BYTES - 1000));
+        mixer.pushPcm('a', pcmFrame(100));
+        expect(push).not.toHaveBeenCalled();
+        mixer._read();
+        expect(push).toHaveBeenCalledTimes(1);
         mixer.destroy();
+        mixer._read();
+        mixer.pushPcm('a', pcmFrame(200));
+        expect(push).toHaveBeenCalledTimes(1);
+    });
+
+    test('2フレーム未満のユーザーは混ざらず揃ったら混ざる', () => {
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(100), pcmFrame(200)]));
+        mixer.pushPcm('b', pcmFrame(300));
+        expect(mixer.nextFrame()).toEqual(pcmFrame(100));
+        mixer.pushPcm('b', pcmFrame(400));
+        expect(mixer.nextFrame()).toEqual(pcmFrame(500));
+        expect(mixer.nextFrame()).toEqual(pcmFrame(400));
+    });
+
+    test('終了したユーザーは2フレーム未満でも残りを流して端数ごと消す', () => {
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(100), Buffer.alloc(1, 1)]));
+        mixer.remove('a');
+        expect(mixer.nextFrame()).toEqual(pcmFrame(100));
+        expect(mixer['users'].has('a')).toBe(false);
+        mixer.pushPcm('b', Buffer.alloc(1, 1));
+        mixer.remove('b');
+        expect(mixer.nextFrame()).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer['users'].has('b')).toBe(false);
+    });
+
+    test('実ストリームは入力停止中も無音を返しプリフィルなしで再開する', () => {
+        expect(mixer.readableHighWaterMark).toBe(FRAME_BYTES);
+        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        mixer.pushPcm('a', pcmFrame(123));
+        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        mixer.pushPcm('a', pcmFrame(456));
+        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(123));
+        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(456));
+        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        expect(mixer.readableEnded).toBe(false);
+        mixer.pushPcm('a', pcmFrame(789));
+        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(789));
+    });
+
+    test('2ユーザーの到着がずれてもプリフィル後は毎フレーム加算する', () => {
+        mixer.pushPcm('a', pcmFrame(100));
+        mixer.pushPcm('b', pcmFrame(300));
+        expect(mixer.read(FRAME_BYTES)).toEqual(Buffer.alloc(FRAME_BYTES));
+        mixer.pushPcm('a', pcmFrame(100));
+        mixer.pushPcm('b', pcmFrame(300));
+        expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(400));
+        for (let i = 0; i < 10; i++) {
+            mixer.pushPcm('a', pcmFrame(100));
+            expect(mixer.read(FRAME_BYTES)).toEqual(pcmFrame(400));
+            mixer.pushPcm('b', pcmFrame(300));
+        }
     });
 
     test('非無音カウンタは相殺と無音を除く', () => {
         const onNonSilentFrame = jest.fn();
         mixer.destroy();
         mixer = new AudioMixer({ onNonSilentFrame });
-        mixer.pushPcm('a', pcmFrame(100));
-        mixer.pushPcm('b', pcmFrame(-100));
+        mixer.pushPcm('a', Buffer.concat([pcmFrame(100), pcmFrame(100)]));
+        mixer.pushPcm('b', Buffer.concat([pcmFrame(-100), pcmFrame(-100)]));
         mixer.nextFrame();
         mixer.nextFrame();
         expect(onNonSilentFrame).not.toHaveBeenCalled();

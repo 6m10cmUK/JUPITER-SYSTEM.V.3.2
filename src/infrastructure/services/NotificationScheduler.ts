@@ -1,6 +1,6 @@
 import * as cron from 'node-cron';
 import { WebSocketServer } from '../websocket/WebSocketServer';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logSystem } from '../../shared/utils/UsageLogger';
@@ -50,7 +50,7 @@ export class NotificationScheduler {
 
   addSchedule(options: ScheduleOptions): string {
     const { date, message, repeat, interval, until, createdBy } = options;
-    const id = uuidv4().substring(0, 8);
+    const id = randomUUID().substring(0, 8);
     
     // cronExpressionの生成
     const cronExpression = this.generateCronExpression(date, repeat, interval);
@@ -157,7 +157,6 @@ export class NotificationScheduler {
         console.error('[Scheduler] cron実行エラー:', getErrorStack(error) ?? error);
       }
     }, {
-      scheduled: true,
       timezone: 'Asia/Tokyo'
     });
 
